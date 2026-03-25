@@ -102,7 +102,6 @@ update(table) -> Table
 | Direccion | Consumidor | Detalle |
 |-----------|-----------|---------|
 | Provee | Todos | restaurant_id, branding, config |
-| Provee | Reservation | Mesas, horarios |
 | Provee | Order | Modalidades de servicio, zonas de delivery |
 | Provee | Frontend | Tema visual, branding |
 

@@ -139,7 +139,7 @@ Si los tests de fitness fallan, hay una violacion arquitectonica que debe correg
 Usar las factories de `tests/conftest.py`:
 
 ```python
-from tests.conftest import make_order, make_dish, make_reservation
+from tests.conftest import make_order, make_dish
 
 # Crear entidades de test
 order = make_order(status=OrderStatus.PENDING, customer_id=customer_id)
@@ -151,7 +151,6 @@ Mock repositories son fixtures de pytest:
 - `mock_menu_repo` — AsyncMock de IMenuRepository
 - `mock_dish_repo` — AsyncMock de IDishRepository
 - `mock_loyalty_checker` — AsyncMock de ILoyaltyChecker
-- `mock_reservation_repo` — AsyncMock de IReservationRepository
 - `mock_restaurant_repo` — AsyncMock de IRestaurantRepository
 - `mock_allergen_repo` — AsyncMock de IAllergenRepository
 

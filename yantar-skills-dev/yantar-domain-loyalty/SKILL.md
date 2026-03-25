@@ -9,7 +9,7 @@ description: >
 
 ## Proposito
 
-Gestiona el programa de fidelizacion de cada restaurante. Con cada pedido o visita el cliente acumula puntos que puede canjear por descuentos, productos gratuitos o beneficios exclusivos. Cada restaurante configura sus propias reglas.
+Gestiona el programa de fidelizacion de cada restaurante. Con cada pedido el cliente acumula puntos que puede canjear por descuentos, productos gratuitos o beneficios exclusivos. Cada restaurante configura sus propias reglas.
 
 ## Mapa de Archivos
 

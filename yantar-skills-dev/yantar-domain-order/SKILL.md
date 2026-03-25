@@ -9,7 +9,7 @@ description: >
 
 ## Proposito
 
-Gestiona el ciclo de vida completo de pedidos: desde la creacion del carrito hasta la entrega/recogida. Soporta tres modalidades (en mesa, recogida, domicilio) y notifica al restaurante en tiempo real.
+Gestiona el ciclo de vida completo de pedidos: desde la creacion del carrito hasta la entrega/recogida. Soporta modalidades de recogida y delivery a domicilio, y notifica al restaurante en tiempo real.
 
 ## Mapa de Archivos
 

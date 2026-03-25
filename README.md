@@ -1,13 +1,13 @@
 # Yantar
 
-Plataforma white-label que permite a cualquier restaurante tener su propia aplicación móvil personalizada con su identidad visual, nombre y marca propios.
+Plataforma SaaS white-label de delivery para restaurantes. Cada restaurante obtiene su propia app personalizada (logo, colores, nombre) lista para usar, sin necesidad de desarrollo propio. Yantar opera como infraestructura invisible.
 
 ## Funcionalidades principales
 
-- **Menú digital y pedidos** — navegación por categorías, personalización de platos y pedidos en mesa, recogida o delivery
-- **Alérgenos e ingredientes** — información detallada y filtrado por intolerancias
-- **Reserva de mesa** — selección de fecha, hora y comensales
-- **Programa de fidelización** — acumulación y canje de puntos
+- **Pedidos y delivery** — el cliente navega el menú, personaliza platos y hace pedidos para entrega a domicilio o recogida
+- **Menú digital configurable** — categorías, fotos, descripciones, precios y personalización de platos gestionados por el restaurante
+- **Alérgenos e ingredientes** — información detallada por plato y filtrado automático por intolerancias
+- **Programa de fidelización** — acumulación y canje de puntos configurado por cada restaurante
 
 ## Estructura del proyecto
 

@@ -12,7 +12,7 @@ triggers:
 
 ## Vision General
 
-Yantar es una plataforma white-label que permite a restaurantes tener su propia app movil personalizada. El proyecto tiene:
+Yantar es una plataforma SaaS white-label de delivery que permite a restaurantes tener su propia app movil personalizada. El proyecto tiene:
 
 - **Backend**: Python/FastAPI en `yantar_backend/`
 - **Frontend**: Next.js/TypeScript en `yantar-frontend/`
@@ -27,7 +27,6 @@ Yantar es una plataforma white-label que permite a restaurantes tener su propia 
 | Identity | `app/identity/` | `domains/identity/` | Usuarios, auth, roles |
 | Loyalty | `app/loyalty/` | `domains/profile/` | Puntos, fidelizacion, canjes |
 | Restaurant | `app/restaurant/` | — (panel admin) | Config white-label, branding |
-| Reservation | `app/reservation/` | `domains/reservation/` | Reservas de mesa |
 | Allergen | `app/allergen/` | `domains/menu/` (integrado) | Alergenos, ingredientes, filtros |
 
 ---
@@ -45,7 +44,6 @@ Consulta el skill de dominio correspondiente:
 - `/yantar-domain-identity` — Perfiles, auth, roles (CUSTOMER/RESTAURANT_ADMIN/SUPERADMIN)
 - `/yantar-domain-loyalty` — Puntos, canjes, reglas de fidelizacion
 - `/yantar-domain-restaurant` — Configuracion restaurante, branding, temas
-- `/yantar-domain-reservation` — Reservas, disponibilidad, mesas
 - `/yantar-domain-allergen` — Alergenos, ingredientes, filtros alimentarios
 
 **Frontend:**
@@ -53,7 +51,6 @@ Consulta el skill de dominio correspondiente:
 - `/yantar-domain-frontend-menu` — Navegacion carta, filtros, detalle plato
 - `/yantar-domain-frontend-profile` — Perfil usuario, historial, puntos
 - `/yantar-domain-frontend-identity` — Auth hooks, registro, login
-- `/yantar-domain-frontend-reservation` — UI reservas, calendario, confirmacion
 
 ### 2. TDD Obligatorio
 

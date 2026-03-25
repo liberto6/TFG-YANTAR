@@ -2,21 +2,21 @@
 name: yantar-domain-frontend-profile
 description: >
   Documentacion viva del dominio frontend Profile: perfil de usuario,
-  historial de pedidos, puntos de fidelizacion, reservas, y preferencias.
+  historial de pedidos, puntos de fidelizacion, y preferencias.
 ---
 
 # Frontend Profile Domain
 
 ## Proposito
 
-Muestra el perfil del cliente con su historial de pedidos, puntos de fidelizacion acumulados, reservas activas/pasadas, y preferencias alimentarias (alergenos guardados). Permite gestionar datos personales y canjear recompensas.
+Muestra el perfil del cliente con su historial de pedidos, puntos de fidelizacion acumulados, y preferencias alimentarias (alergenos guardados). Permite gestionar datos personales y canjear recompensas.
 
 ## Mapa de Archivos
 
 ```
 yantar-frontend/domains/profile/
 +-- domain/
-|   +-- types.ts                    # LoyaltyInfo, OrderHistoryItem, ReservationSummary
+|   +-- types.ts                    # LoyaltyInfo, OrderHistoryItem
 |   +-- rules.ts                    # canRedeem(), getTierName(), getNextTierProgress()
 |   +-- rules.test.ts
 +-- application/
@@ -27,8 +27,6 @@ yantar-frontend/domains/profile/
 |   +-- use-loyalty.test.ts
 |   +-- use-order-history.ts       # Hook de historial de pedidos
 |   +-- use-order-history.test.ts
-|   +-- use-reservation-history.ts # Hook de historial de reservas
-|   +-- use-reservation-history.test.ts
 |   +-- use-preferences.ts        # Hook de preferencias (alergenos, idioma)
 |   +-- use-preferences.test.ts
 +-- infrastructure/
@@ -44,7 +42,6 @@ yantar-frontend/domains/profile/
     +-- LoyaltyCard.Tier.tsx        # Nivel actual y progreso
     +-- LoyaltyCard.Rewards.tsx     # Recompensas disponibles
     +-- OrderHistory.tsx            # Lista de pedidos anteriores
-    +-- ReservationHistory.tsx      # Lista de reservas
     +-- PreferencesEditor.tsx       # Editor de preferencias alimentarias
 ```
 
@@ -94,19 +91,6 @@ type OrderHistoryItem = {
 }
 ```
 
-### ReservationSummary
-```typescript
-type ReservationSummary = {
-  id: string
-  restaurantName: string
-  date: string
-  time: string
-  partySize: number
-  status: ReservationStatus
-  tableName?: string
-}
-```
-
 ## Rules (Predicados puros)
 
 - `canRedeem(balance, cost)` -> balance >= cost
@@ -134,7 +118,7 @@ getPointsHistory(restaurantId: string): Promise<PointsTransaction[]>
 
 ### useProfileSummary(restaurantId)
 **State**: profile, loading
-**Data**: nombre, email, pedidos totales, puntos, tier, reservas activas
+**Data**: nombre, email, pedidos totales, puntos, tier
 
 ### useLoyalty(restaurantId)
 **State**: loyaltyInfo, loading
@@ -144,10 +128,6 @@ getPointsHistory(restaurantId: string): Promise<PointsTransaction[]>
 ### useOrderHistory(restaurantId)
 **State**: orders[], loading, hasMore
 **Handlers**: loadMore() (paginacion)
-
-### useReservationHistory()
-**State**: upcoming[], past[], loading
-**Computed**: hasUpcoming
 
 ### usePreferences()
 **State**: excludedAllergens[], language

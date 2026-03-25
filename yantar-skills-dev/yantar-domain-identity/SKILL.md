@@ -43,7 +43,6 @@ yantar_backend/app/identity/
   - `is_customer()`, `is_restaurant_admin()`, `is_superadmin()` -> role checks
   - `can_manage_menu(restaurant_id)` -> Admin de ese restaurante o Superadmin
   - `can_manage_orders(restaurant_id)` -> Admin de ese restaurante o Superadmin
-  - `can_manage_reservations(restaurant_id)` -> Admin de ese restaurante o Superadmin
   - `can_configure_restaurant(restaurant_id)` -> Admin de ese restaurante o Superadmin
   - `can_view_customer_data(customer_id)` -> Customers ven solo lo propio, Admins ven clientes de su restaurante
   - `belongs_to_restaurant(restaurant_id)` -> true si es admin de ese restaurante
@@ -76,7 +75,6 @@ create_auth_user(email, password) -> UUID      # Registration
 Raises `AuthorizationError` on denial:
 - `ensure_can_manage_menu(user, restaurant_id)`
 - `ensure_can_manage_orders(user, restaurant_id)`
-- `ensure_can_manage_reservations(user, restaurant_id)`
 - `ensure_can_configure_restaurant(user, restaurant_id)`
 - `ensure_can_view_customer_data(user, customer_id)`
 - `ensure_belongs_to_restaurant(user, restaurant_id)`

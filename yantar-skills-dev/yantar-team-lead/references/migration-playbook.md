@@ -14,7 +14,6 @@ Yantar es un proyecto greenfield (sin legacy). Cada dominio se implementa siguie
 |---------|--------|----------------|--------|
 | Menu | `/menu` | GET /menu/{restaurant_id}, GET /dishes/{id}, POST /dishes (admin) | Por implementar |
 | Order | `/orders` | POST /orders, GET /orders/{id}, PATCH /orders/{id}/status | Por implementar |
-| Reservation | `/reservations` | POST /reservations, GET /availability, DELETE /reservations/{id} | Por implementar |
 | Loyalty | `/loyalty` | GET /loyalty/balance, POST /loyalty/redeem, GET /loyalty/rewards | Por implementar |
 | Identity | `/auth`, `/profile` | POST /auth/register, POST /auth/login, GET /profile | Por implementar |
 | Restaurant | `/restaurant` | GET /restaurant/{id}/config, PUT /restaurant/{id}/branding (admin) | Por implementar |
@@ -26,7 +25,6 @@ Yantar es un proyecto greenfield (sin legacy). Cada dominio se implementa siguie
 |---------|-----------|-------------------|--------|
 | Menu | `domains/menu/` | MenuBrowser, DishCard, DishDetail | Por implementar |
 | Order | `domains/order/` | Cart, OrderStatus | Por implementar |
-| Reservation | `domains/reservation/` | ReservationForm, MyReservations | Por implementar |
 | Profile | `domains/profile/` | LoyaltyCard, OrderHistory, Preferences | Por implementar |
 | Identity | `domains/identity/` | LoginForm, RegisterForm, AuthGuard | Por implementar |
 
@@ -118,7 +116,6 @@ Basado en dependencias entre dominios:
 4. **Menu** — necesita Restaurant y Allergen
 5. **Order** — necesita Menu y opcionalmente Loyalty
 6. **Loyalty** — necesita Order (para award points)
-7. **Reservation** — necesita Restaurant (mesas, horarios)
 
 **Frontend en paralelo**: Identity y Menu pueden empezar tan pronto como sus APIs backend esten listas.
 
