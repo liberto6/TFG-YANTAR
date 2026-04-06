@@ -1,0 +1,383 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== IDENTITY ====================
+
+model User {
+  id          String   @id @default(uuid())
+  email       String
+  role        UserRole @default(CUSTOMER)
+  displayName String?  @map("display_name")
+  phone       String?
+  avatarUrl   String?  @map("avatar_url")
+  companyId   String?  @map("company_id")
+  preferences Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company         Company?          @relation(fields: [companyId], references: [id])
+  orders          Order[]
+  loyaltyAccounts LoyaltyAccount[]
+
+  @@unique([email, companyId])
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER
+  RESTAURANT_ADMIN
+  SUPERADMIN
+}
+
+// ==================== COMPANY ====================
+
+model Company {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique
+  description     String?
+  domain          String?  @unique
+  logoUrl         String?  @map("logo_url")
+  faviconUrl      String?  @map("favicon_url")
+  fontFamily      String?  @map("font_family")
+  colorPrimary    String?  @map("color_primary")
+  colorSecondary  String?  @map("color_secondary")
+  colorAccent     String?  @map("color_accent")
+  colorBackground String?  @map("color_background")
+  colorSurface    String?  @map("color_surface")
+  colorText       String?  @map("color_text")
+  colorTextMuted  String?  @map("color_text_muted")
+  welcomeMessage  String?  @map("welcome_message")
+  appName         String?  @map("app_name")
+  isActive        Boolean  @default(false) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  users      User[]
+  branches   Branch[]
+  categories Category[]
+  dishes     Dish[]
+  rewards    Reward[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id           String        @id @default(uuid())
+  companyId    String        @map("company_id")
+  name         String
+  address      String
+  phone        String?
+  email        String?
+  latitude     Float?
+  longitude    Float?
+  serviceModes ServiceMode[] @map("service_modes")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  company        Company          @relation(fields: [companyId], references: [id])
+  operatingHours OperatingHour[]
+  deliveryZones  DeliveryZone[]
+  orders         Order[]
+
+  @@map("branches")
+}
+
+enum ServiceMode {
+  PICKUP
+  DELIVERY
+}
+
+model OperatingHour {
+  id        String  @id @default(uuid())
+  branchId  String  @map("branch_id")
+  dayOfWeek Int     @map("day_of_week") // 0=Sunday, 6=Saturday
+  openTime  String  @map("open_time") // "09:00"
+  closeTime String  @map("close_time") // "22:00"
+  isClosed  Boolean @default(false) @map("is_closed")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@map("operating_hours")
+}
+
+model DeliveryZone {
+  id                   String   @id @default(uuid())
+  branchId             String   @map("branch_id")
+  companyId            String   @map("company_id")
+  name                 String
+  postalCodes          String[] @map("postal_codes")
+  minOrderAmount       Float    @default(0) @map("min_order_amount")
+  deliveryFee          Float    @default(0) @map("delivery_fee")
+  estimatedTimeMinutes Int      @default(30) @map("estimated_time_minutes")
+  isActive             Boolean  @default(true) @map("is_active")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@map("delivery_zones")
+}
+
+// ==================== MENU ====================
+
+model Category {
+  id          String   @id @default(uuid())
+  companyId   String   @map("company_id")
+  name        String
+  description String?
+  imageUrl    String?  @map("image_url")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  dishes  Dish[]
+
+  @@map("categories")
+}
+
+model Dish {
+  id          String     @id @default(uuid())
+  companyId   String     @map("company_id")
+  categoryId  String     @map("category_id")
+  name        String
+  description String?
+  basePrice   Float      @map("base_price")
+  imageUrl    String?    @map("image_url")
+  status      DishStatus @default(ACTIVE)
+  sortOrder   Int        @default(0) @map("sort_order")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  company        Company         @relation(fields: [companyId], references: [id])
+  category       Category        @relation(fields: [categoryId], references: [id])
+  allergenCodes  DishAllergen[]
+  variantGroups  VariantGroup[]
+  modifierGroups ModifierGroup[]
+  orderItems     OrderItem[]
+
+  @@map("dishes")
+}
+
+enum DishStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model DishAllergen {
+  id           String @id @default(uuid())
+  dishId       String @map("dish_id")
+  allergenCode String @map("allergen_code")
+
+  dish Dish @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@unique([dishId, allergenCode])
+  @@map("dish_allergens")
+}
+
+model VariantGroup {
+  id        String  @id @default(uuid())
+  dishId    String  @map("dish_id")
+  name      String
+  required  Boolean @default(true)
+  sortOrder Int     @default(0) @map("sort_order")
+
+  dish    Dish            @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  options VariantOption[]
+
+  @@map("variant_groups")
+}
+
+model VariantOption {
+  id              String @id @default(uuid())
+  variantGroupId  String @map("variant_group_id")
+  name            String
+  priceAdjustment Float  @default(0) @map("price_adjustment")
+  sortOrder       Int    @default(0) @map("sort_order")
+
+  variantGroup VariantGroup @relation(fields: [variantGroupId], references: [id], onDelete: Cascade)
+
+  @@map("variant_options")
+}
+
+model ModifierGroup {
+  id            String        @id @default(uuid())
+  dishId        String        @map("dish_id")
+  name          String
+  required      Boolean       @default(false)
+  selectionType SelectionType @default(MULTIPLE) @map("selection_type")
+  minSelections Int           @default(0) @map("min_selections")
+  maxSelections Int?          @map("max_selections")
+  sortOrder     Int           @default(0) @map("sort_order")
+
+  dish    Dish             @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  options ModifierOption[]
+
+  @@map("modifier_groups")
+}
+
+enum SelectionType {
+  SINGLE
+  MULTIPLE
+}
+
+model ModifierOption {
+  id              String @id @default(uuid())
+  modifierGroupId String @map("modifier_group_id")
+  name            String
+  extraPrice      Float  @default(0) @map("extra_price")
+  sortOrder       Int    @default(0) @map("sort_order")
+
+  modifierGroup ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@map("modifier_options")
+}
+
+// ==================== ORDER ====================
+
+model Order {
+  id               String       @id @default(uuid())
+  companyId        String       @map("company_id")
+  branchId         String       @map("branch_id")
+  customerId       String       @map("customer_id")
+  status           OrderStatus  @default(PENDING)
+  deliveryMode     DeliveryMode @map("delivery_mode")
+  subtotal         Float        @default(0)
+  deliveryFee      Float        @default(0) @map("delivery_fee")
+  discount         Float        @default(0)
+  total            Float        @default(0)
+  notes            String?
+  deliveryAddress  String?      @map("delivery_address")
+  scheduledTime    DateTime?    @map("scheduled_time")
+  rejectionReason  String?      @map("rejection_reason")
+  estimatedMinutes Int?         @map("estimated_minutes")
+  paymentMethod    String?      @map("payment_method")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  confirmedAt      DateTime?    @map("confirmed_at")
+  completedAt      DateTime?    @map("completed_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  branch   Branch      @relation(fields: [branchId], references: [id])
+  customer User        @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum DeliveryMode {
+  PICKUP
+  DELIVERY
+}
+
+model OrderItem {
+  id                String @id @default(uuid())
+  orderId           String @map("order_id")
+  dishId            String @map("dish_id")
+  dishName          String @map("dish_name")
+  quantity          Int
+  unitPrice         Float  @map("unit_price")
+  selectedVariant   String? @map("selected_variant")
+  selectedModifiers Json   @default("[]") @map("selected_modifiers")
+  notes             String?
+  lineTotal         Float  @map("line_total")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  dish  Dish  @relation(fields: [dishId], references: [id])
+
+  @@map("order_items")
+}
+
+// ==================== LOYALTY ====================
+
+model LoyaltyAccount {
+  id                  String   @id @default(uuid())
+  customerId          String   @map("customer_id")
+  companyId           String   @map("company_id")
+  totalPointsEarned   Int      @default(0) @map("total_points_earned")
+  totalPointsRedeemed Int      @default(0) @map("total_points_redeemed")
+  currentBalance      Int      @default(0) @map("current_balance")
+  createdAt           DateTime @default(now()) @map("created_at")
+  lastActivityAt      DateTime @default(now()) @map("last_activity_at")
+
+  customer     User                @relation(fields: [customerId], references: [id])
+  transactions PointsTransaction[]
+
+  @@unique([customerId, companyId])
+  @@map("loyalty_accounts")
+}
+
+model PointsTransaction {
+  id        String          @id @default(uuid())
+  accountId String          @map("account_id")
+  type      TransactionType
+  points    Int
+  reason    String
+  orderId   String?         @map("order_id")
+  rewardId  String?         @map("reward_id")
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id])
+
+  @@map("points_transactions")
+}
+
+enum TransactionType {
+  EARNED
+  REDEEMED
+}
+
+model Reward {
+  id          String     @id @default(uuid())
+  companyId   String     @map("company_id")
+  name        String
+  description String?
+  type        RewardType
+  pointsCost  Int        @map("points_cost")
+  value       String
+  isActive    Boolean    @default(true) @map("is_active")
+  stock       Int?
+  validFrom   DateTime?  @map("valid_from")
+  validUntil  DateTime?  @map("valid_until")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("rewards")
+}
+
+enum RewardType {
+  DISCOUNT_PERCENT
+  DISCOUNT_FIXED
+  FREE_ITEM
+}
+
+// ==================== ALLERGEN (seed data) ====================
+
+model Allergen {
+  id          String  @id @default(uuid())
+  code        String  @unique
+  name        String
+  description String?
+  iconUrl     String? @map("icon_url")
+  isMajor     Boolean @default(true) @map("is_major")
+
+  @@map("allergens")
+}

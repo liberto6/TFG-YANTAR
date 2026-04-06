@@ -2,140 +2,150 @@
 name: yantar-domain-order
 description: >
   Documentacion viva del bounded context Order: carrito de compra,
-  pedidos, lifecycle de estados, modalidades de entrega, y notificaciones.
+  pedidos, lifecycle de estados, modalidades de entrega, tiempo real y notificaciones.
 ---
 
 # Order Domain
 
 ## Proposito
 
-Gestiona el ciclo de vida completo de pedidos: desde la creacion del carrito hasta la entrega/recogida. Soporta modalidades de recogida y delivery a domicilio, y notifica al restaurante en tiempo real.
+Gestiona el ciclo de vida completo de pedidos: desde la creacion del carrito hasta la entrega/recogida. Soporta pickup y delivery a domicilio. Notifica al restaurante en tiempo real via WebSocket. El restaurante puede aceptar o rechazar pedidos.
 
 ## Mapa de Archivos
 
 ```
-yantar_backend/app/order/
-+-- domain/
-|   +-- entities.py          # Order, OrderItem, Cart
-|   +-- ports.py             # IOrderRepository, INotificationService, ILoyaltyChecker, IPaymentGateway
-|   +-- value_objects.py     # OrderStatus, DeliveryMode, OrderItemCustomization
-|   +-- services.py          # PricingService (calculos de total, descuentos)
-|   +-- errors.py            # OrderNotFoundError, EmptyCartError, etc.
-+-- application/
-|   +-- dtos.py              # CreateOrderRequest/Result, OrderStatusDTO, etc.
-|   +-- create_order.py      # CreateOrderUseCase
-|   +-- confirm_order.py     # ConfirmOrderUseCase (restaurante acepta)
-|   +-- cancel_order.py      # CancelOrderUseCase
-|   +-- update_order_status.py # UpdateOrderStatusUseCase (preparando, listo, entregado)
-|   +-- get_order.py         # GetOrderUseCase
-|   +-- get_order_history.py # GetOrderHistoryUseCase
-+-- infrastructure/
-    +-- http/
-    |   +-- endpoints.py          # /orders routes
-    |   +-- notification_adapter.py  # Push notifications al restaurante
-    |   +-- payment_adapter.py       # Pasarela de pago (si aplica)
-    +-- persistence/
-        +-- sqlmodel_order_repo.py   # IOrderRepository -> SQLModel
+apps/backend/src/order/
+├── domain/
+│   ├── entities/
+│   │   ├── order.entity.ts          # Order con state machine
+│   │   └── order-item.entity.ts     # OrderItem
+│   ├── ports/
+│   │   ├── order-repository.port.ts
+│   │   ├── notification-service.port.ts  # Notificaciones tiempo real
+│   │   ├── loyalty-checker.port.ts       # Cross-domain → Loyalty
+│   │   └── payment-gateway.port.ts       # Mocked por ahora
+│   ├── value-objects/
+│   │   ├── order-status.enum.ts          # State machine
+│   │   ├── delivery-mode.enum.ts         # PICKUP, DELIVERY
+│   │   └── order-item-customization.vo.ts
+│   ├── services/
+│   │   └── pricing.service.ts        # Calculos de total, descuentos
+│   └── errors/
+│       ├── order-not-found.error.ts
+│       ├── empty-cart.error.ts
+│       └── invalid-order-transition.error.ts
+├── application/
+│   ├── services/
+│   │   ├── create-order.service.ts          # Crear pedido desde carrito
+│   │   ├── accept-order.service.ts          # Restaurante acepta
+│   │   ├── reject-order.service.ts          # Restaurante rechaza
+│   │   ├── update-order-status.service.ts   # Mover entre estados
+│   │   ├── cancel-order.service.ts          # Cliente cancela
+│   │   ├── get-order.service.ts
+│   │   ├── get-order-history.service.ts
+│   │   └── get-active-orders.service.ts     # Para vista operativa
+│   └── dtos/
+│       ├── create-order.dto.ts
+│       ├── order.dto.ts
+│       └── order-status.dto.ts
+├── infrastructure/
+│   ├── controllers/
+│   │   ├── order.controller.ts          # /orders routes (customer)
+│   │   └── admin-order.controller.ts    # /admin/orders routes (operativo)
+│   ├── repositories/
+│   │   └── prisma-order.repository.ts
+│   ├── gateways/
+│   │   └── order-events.gateway.ts      # WebSocket gateway para tiempo real
+│   └── adapters/
+│       ├── ws-notification.adapter.ts   # INotificationService → WebSocket
+│       └── mock-payment.adapter.ts      # IPaymentGateway → mock
+└── order.module.ts
 ```
 
 ## Entidades
 
 ### Order
-- **Campos**: `customer_id`, `restaurant_id`, `status`, `delivery_mode`, `items[]`, `subtotal`, `discount`, `total`, `notes`, `table_number` (si DINE_IN), `delivery_address` (si DELIVERY), `estimated_time_minutes`, `created_at`, `confirmed_at`, `completed_at`
-- **Estados**: `PENDING -> CONFIRMED -> PREPARING -> READY -> COMPLETED` (o `CANCELLED`)
+- **Campos**: `id`, `companyId`, `branchId`, `customerId`, `status`, `deliveryMode`, `items[]`, `subtotal`, `deliveryFee`, `discount`, `total`, `notes`, `deliveryAddress` (si DELIVERY), `scheduledTime` (franja horaria elegida), `rejectionReason`, `estimatedTimeMinutes`, `createdAt`, `confirmedAt`, `completedAt`
+- **State Machine**:
+  ```
+  PENDING → ACCEPTED → PREPARING → READY → DELIVERED
+  PENDING → REJECTED
+  PENDING → CANCELLED (por cliente)
+  ACCEPTED → CANCELLED (por cliente, con condiciones)
+  ```
 - **Logica**:
-  - `confirm()` -> PENDING -> CONFIRMED (raises si wrong state)
-  - `start_preparing()` -> CONFIRMED -> PREPARING
-  - `mark_ready()` -> PREPARING -> READY
-  - `complete()` -> READY -> COMPLETED
-  - `cancel(reason)` -> solo desde PENDING o CONFIRMED
-  - `calculate_total(dishes)` -> suma precios * cantidades - descuentos
-  - `apply_points_discount(available_points, redeem_points)` -> aplica descuento
-  - `is_cancellable()` -> true si PENDING o CONFIRMED
-  - `is_active()` -> true si no COMPLETED ni CANCELLED
+  - `accept()` → PENDING → ACCEPTED
+  - `reject(reason)` → PENDING → REJECTED
+  - `startPreparing()` → ACCEPTED → PREPARING
+  - `markReady()` → PREPARING → READY
+  - `markDelivered()` → READY → DELIVERED
+  - `cancel(reason)` → solo desde PENDING o ACCEPTED
+  - `isCancellable()` → true si PENDING o ACCEPTED
+  - `isActive()` → true si no DELIVERED, REJECTED ni CANCELLED
+  - `calculateTotal(items, deliveryFee, discount)` → subtotal + fee - discount
 
 ### OrderItem
-- **Campos**: `dish_id`, `dish_name`, `quantity`, `unit_price`, `customizations[]`, `notes`
-- **Logica**: `line_total()` -> `unit_price * quantity`
-
-### Cart (Value Object / Transient)
-- **Campos**: `restaurant_id`, `items[]`, `delivery_mode`
-- **Logica**:
-  - `add_item(item)` -> agrega o incrementa cantidad
-  - `remove_item(dish_id)` -> elimina
-  - `update_quantity(dish_id, quantity)` -> actualiza
-  - `is_empty()` -> true si no items
-  - `item_count()` -> suma de cantidades
+- **Campos**: `id`, `dishId`, `dishName`, `quantity`, `unitPrice`, `selectedVariant` (nombre + precio), `selectedModifiers[]` (nombre + precio), `notes`, `lineTotal`
 
 ## Value Objects
 
-- **OrderStatus**: `PENDING`, `CONFIRMED`, `PREPARING`, `READY`, `COMPLETED`, `CANCELLED`
-- **DeliveryMode**: `DINE_IN` (en mesa), `PICKUP` (recogida), `DELIVERY` (domicilio)
-- **OrderItemCustomization**: `name` (ej: "sin cebolla"), `type` (REMOVE/ADD/REPLACE), `extra_price`
+- **OrderStatus**: `PENDING`, `ACCEPTED`, `REJECTED`, `PREPARING`, `READY`, `DELIVERED`, `CANCELLED`
+- **DeliveryMode**: `PICKUP`, `DELIVERY`
+- **OrderItemCustomization**: `name`, `type` (VARIANT/MODIFIER), `price`
 
 ## Ports (Interfaces)
 
 ### IOrderRepository
-```python
-get_by_id(order_id, restaurant_id) -> Order | None
-get_by_customer(customer_id, restaurant_id) -> list[Order]
-get_active_by_customer(customer_id, restaurant_id) -> Order | None
-get_history(customer_id, restaurant_id, limit, offset) -> list[Order]
-save(order) -> Order
-update_status(order_id, status) -> Order
+```typescript
+getById(orderId: string, companyId: string): Promise<Order | null>
+getByCustomer(customerId: string, companyId: string, limit?: number, offset?: number): Promise<Order[]>
+getActiveByBranch(branchId: string): Promise<Order[]>  // Para vista operativa
+save(order: Order): Promise<Order>
+updateStatus(orderId: string, status: OrderStatus): Promise<Order>
 ```
 
 ### INotificationService
-```python
-notify_new_order(order) -> None        # Push al restaurante
-notify_order_ready(order) -> None      # Push al cliente
-notify_order_cancelled(order) -> None  # Push a ambos
+```typescript
+notifyNewOrder(order: Order): Promise<void>        // WebSocket → vista operativa
+notifyOrderStatusChange(order: Order): Promise<void> // WebSocket → customer
 ```
 
-### ILoyaltyChecker (cross-domain — del dominio Loyalty)
-```python
-get_available_points(customer_id) -> int
-redeem_points(customer_id, points) -> None
-award_points(customer_id, order_total) -> int  # retorna puntos otorgados
+### ILoyaltyChecker (cross-domain → Loyalty)
+```typescript
+getAvailablePoints(customerId: string, companyId: string): Promise<number>
+redeemPoints(customerId: string, companyId: string, points: number): Promise<void>
+awardPoints(customerId: string, companyId: string, orderTotal: number): Promise<number>
 ```
 
-### IPaymentGateway (opcional)
-```python
-create_payment_intent(order_id, amount) -> PaymentIntent
-confirm_payment(payment_id) -> bool
+### IPaymentGateway (mocked)
+```typescript
+createPaymentIntent(orderId: string, amount: number): Promise<PaymentIntent>
+confirmPayment(paymentId: string): Promise<boolean>
 ```
 
-## Servicios de Dominio
+## WebSocket Events
 
-### PricingService (funciones puras)
-- `calculate_subtotal(items[])` -> Decimal
-- `calculate_discount(subtotal, points_to_redeem, point_value)` -> Decimal
-- `calculate_total(subtotal, discount)` -> Decimal
+### Desde el servidor
+- `order:new` → vista operativa recibe pedido nuevo
+- `order:status-changed` → customer recibe cambio de estado
+- `order:cancelled` → ambas partes
+
+### Desde el cliente
+- `order:subscribe` → customer se suscribe a actualizaciones de su pedido
+- `branch:subscribe` → vista operativa se suscribe a pedidos de su sede
 
 ## Dependencias Cross-Domain
 
 | Direccion | Port | Dominio Proveedor |
 |-----------|------|--------------------|
-| Consume | `ILoyaltyChecker` | Loyalty |
-| Consume | `IMenuReader` | Menu (validar platos/precios) |
+| Consume | ILoyaltyChecker | Loyalty (verificar/canjear puntos) |
+| Consume | Menu (validar platos) | Menu (precios, disponibilidad) |
 | Provee | Pedidos completados | Loyalty (para otorgar puntos) |
 
-## Tests
+## Notas
 
-```
-tests/order/
-+-- test_entities.py          # State machine, calculate_total, is_cancellable
-+-- test_pricing_service.py   # Calculos de precio puros
-+-- test_create_order.py      # Use case
-+-- test_confirm_order.py     # Use case
-+-- test_cancel_order.py      # Use case
-```
-
-**Fixtures en `tests/conftest.py`**: `mock_order_repo`, `mock_notification_service`, `mock_loyalty_checker`
-
-## Deuda Tecnica / Notas
-
-- Dominio nuevo — sin legacy
-- El flujo de pago (PaymentGateway) es opcional en MVP — depende de requisitos del restaurante
-- `estimated_time_minutes` podria calcularse con ML basado en historial (future)
-- Considerar eventos de dominio para desacoplar notificaciones (OrderCreatedEvent, OrderReadyEvent)
+- El pago esta MOCKED — interfaz preparada para integracion futura
+- scheduledTime: franja horaria elegida por el cliente (ej: 14:00-14:30)
+- estimatedTimeMinutes: estimacion del restaurante
+- El flujo de pago en efectivo no requiere PaymentGateway
+- Considerar eventos de dominio para desacoplar notificaciones

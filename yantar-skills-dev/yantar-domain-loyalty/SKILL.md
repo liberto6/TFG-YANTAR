@@ -2,145 +2,123 @@
 name: yantar-domain-loyalty
 description: >
   Documentacion viva del bounded context Loyalty: programa de fidelizacion,
-  acumulacion de puntos, canjes, y reglas configurables por restaurante.
+  acumulacion de puntos, canjes por descuentos, y reglas configurables por empresa.
 ---
 
 # Loyalty Domain
 
 ## Proposito
 
-Gestiona el programa de fidelizacion de cada restaurante. Con cada pedido el cliente acumula puntos que puede canjear por descuentos, productos gratuitos o beneficios exclusivos. Cada restaurante configura sus propias reglas.
+Gestiona el programa de fidelizacion de cada empresa. Con cada pedido el cliente acumula puntos que puede canjear por descuentos. Cada empresa configura sus propias reglas (puntos por euro, recompensas). Los puntos son GLOBALES entre sedes de una misma empresa.
 
 ## Mapa de Archivos
 
 ```
-yantar_backend/app/loyalty/
-+-- domain/
-|   +-- entities.py          # LoyaltyAccount, PointsTransaction, Reward
-|   +-- ports.py             # ILoyaltyAccountRepository, IRewardRepository, IPointsTransactionRepository
-|   +-- value_objects.py     # TransactionType, RewardType, PointsBalance
-|   +-- services.py          # PointsCalculationService (reglas de acumulacion)
-|   +-- errors.py            # InsufficientPointsError, RewardNotAvailableError
-+-- application/
-|   +-- dtos.py              # LoyaltyAccountDTO, RedeemRequest/Result, etc.
-|   +-- get_balance.py       # GetBalanceUseCase
-|   +-- award_points.py      # AwardPointsUseCase (tras pedido completado)
-|   +-- redeem_points.py     # RedeemPointsUseCase (canjear por descuento/reward)
-|   +-- get_rewards.py       # GetAvailableRewardsUseCase
-|   +-- get_history.py       # GetPointsHistoryUseCase
-+-- infrastructure/
-    +-- http/
-    |   +-- endpoints.py          # /loyalty, /rewards routes
-    +-- persistence/
-        +-- sqlmodel_loyalty_repo.py   # ILoyaltyAccountRepository -> SQLModel
-        +-- sqlmodel_reward_repo.py    # IRewardRepository -> SQLModel
+apps/backend/src/loyalty/
+├── domain/
+│   ├── entities/
+│   │   ├── loyalty-account.entity.ts    # Cuenta de puntos del cliente
+│   │   ├── points-transaction.entity.ts # Historial de movimientos
+│   │   └── reward.entity.ts             # Recompensa canjeable
+│   ├── ports/
+│   │   ├── loyalty-account-repository.port.ts
+│   │   ├── reward-repository.port.ts
+│   │   └── points-transaction-repository.port.ts
+│   ├── value-objects/
+│   │   ├── transaction-type.enum.ts     # EARNED, REDEEMED
+│   │   └── reward-type.enum.ts          # DISCOUNT_PERCENT, DISCOUNT_FIXED, FREE_ITEM
+│   ├── services/
+│   │   └── points-calculation.service.ts # Reglas de acumulacion
+│   └── errors/
+│       ├── insufficient-points.error.ts
+│       └── reward-not-available.error.ts
+├── application/
+│   ├── services/
+│   │   ├── get-balance.service.ts
+│   │   ├── award-points.service.ts       # Tras pedido completado
+│   │   ├── redeem-points.service.ts      # Canjear por descuento
+│   │   ├── get-rewards.service.ts        # Recompensas disponibles
+│   │   └── get-points-history.service.ts
+│   └── dtos/
+│       ├── loyalty-account.dto.ts
+│       ├── reward.dto.ts
+│       └── redeem.dto.ts
+├── infrastructure/
+│   ├── controllers/
+│   │   ├── loyalty.controller.ts          # /loyalty routes (customer)
+│   │   └── admin-loyalty.controller.ts    # /admin/loyalty routes
+│   └── repositories/
+│       ├── prisma-loyalty-account.repository.ts
+│       ├── prisma-reward.repository.ts
+│       └── prisma-points-transaction.repository.ts
+└── loyalty.module.ts
 ```
 
 ## Entidades
 
 ### LoyaltyAccount
-- **Campos**: `customer_id`, `restaurant_id`, `total_points_earned`, `total_points_redeemed`, `current_balance`, `tier`, `created_at`, `last_activity_at`
+- **Campos**: `id`, `customerId`, `companyId`, `totalPointsEarned`, `totalPointsRedeemed`, `currentBalance`, `createdAt`, `lastActivityAt`
 - **Logica**:
-  - `can_redeem(points)` -> `current_balance >= points`
-  - `award(points, reason)` -> incrementa balance y total_earned
-  - `redeem(points, reason)` -> raises `InsufficientPointsError` si no alcanza
-  - `update_tier()` -> recalcula tier basado en total_points_earned
+  - `canRedeem(points)` → currentBalance >= points
+  - `award(points, reason)` → incrementa balance y totalEarned
+  - `redeem(points, reason)` → throws InsufficientPointsError si no alcanza
 
 ### PointsTransaction
-- **Campos**: `account_id`, `type` (EARNED/REDEEMED/EXPIRED/ADJUSTED), `points`, `reason`, `order_id?`, `reward_id?`, `created_at`
+- **Campos**: `id`, `accountId`, `type` (EARNED/REDEEMED), `points`, `reason`, `orderId?`, `rewardId?`, `createdAt`
 - **Inmutable** — historial de movimientos
 
-### Reward
-- **Campos**: `restaurant_id`, `name`, `description`, `type` (DISCOUNT_PERCENT/DISCOUNT_FIXED/FREE_ITEM/CUSTOM), `points_cost`, `value` (ej: 10% o 5 EUR o dish_id), `is_active`, `stock` (null = ilimitado), `valid_from`, `valid_until`
+### Reward (Recompensa)
+- **Campos**: `id`, `companyId`, `name`, `description`, `type` (DISCOUNT_PERCENT/DISCOUNT_FIXED/FREE_ITEM), `pointsCost`, `value` (ej: 10% o 5€ o dishId), `isActive`, `stock` (null = ilimitado), `validFrom`, `validUntil`
 - **Logica**:
-  - `is_available()` -> is_active AND (stock is null OR stock > 0) AND within date range
-  - `consume()` -> decrementa stock si no es ilimitado
+  - `isAvailable()` → isActive AND (stock null OR stock > 0) AND within dates
+  - `consume()` → decrementa stock si no es ilimitado
 
 ## Value Objects
 
-- **TransactionType**: `EARNED`, `REDEEMED`, `EXPIRED`, `ADJUSTED`
-- **RewardType**: `DISCOUNT_PERCENT`, `DISCOUNT_FIXED`, `FREE_ITEM`, `CUSTOM`
-- **PointsBalance**: value object >= 0, con `add()` y `subtract()`
-- **LoyaltyTier**: `BRONZE` (0-500), `SILVER` (500-2000), `GOLD` (2000-5000), `PLATINUM` (5000+) — configurable por restaurante
+- **TransactionType**: `EARNED`, `REDEEMED`
+- **RewardType**: `DISCOUNT_PERCENT`, `DISCOUNT_FIXED`, `FREE_ITEM`
 
 ## Ports (Interfaces)
 
 ### ILoyaltyAccountRepository
-```python
-get_by_customer(customer_id, restaurant_id) -> LoyaltyAccount | None
-get_or_create(customer_id, restaurant_id) -> LoyaltyAccount
-save(account) -> None
-```
-
-### IPointsTransactionRepository
-```python
-create(transaction) -> PointsTransaction
-get_history(account_id, limit, offset) -> list[PointsTransaction]
+```typescript
+getByCustomer(customerId: string, companyId: string): Promise<LoyaltyAccount | null>
+getOrCreate(customerId: string, companyId: string): Promise<LoyaltyAccount>
+save(account: LoyaltyAccount): Promise<void>
 ```
 
 ### IRewardRepository
-```python
-get_available(restaurant_id) -> list[Reward]
-get_by_id(reward_id, restaurant_id) -> Reward | None
-update(reward) -> Reward
+```typescript
+getAvailable(companyId: string): Promise<Reward[]>
+getById(rewardId: string, companyId: string): Promise<Reward | null>
+update(reward: Reward): Promise<Reward>
+create(reward: Reward): Promise<Reward>
+```
+
+### IPointsTransactionRepository
+```typescript
+create(transaction: PointsTransaction): Promise<PointsTransaction>
+getHistory(accountId: string, limit?: number, offset?: number): Promise<PointsTransaction[]>
 ```
 
 ## Servicios de Dominio
 
 ### PointsCalculationService (funciones puras)
-- `calculate_points_for_order(order_total, rules)` -> int
-  - Regla base: 1 punto por cada EUR gastado (configurable)
-  - Multiplicadores: x2 en dias especiales, x1.5 para tier Gold+
-- `calculate_discount_value(points, point_value)` -> Decimal
-  - Valor por defecto: 1 punto = 0.01 EUR (configurable)
-
-## Use Cases
-
-### AwardPointsUseCase
-**Dependencias**: ILoyaltyAccountRepository, IPointsTransactionRepository, PointsCalculationService
-**Flujo**:
-1. Get/create loyalty account para customer+restaurant
-2. Calcular puntos segun reglas del restaurante
-3. Award points al account
-4. Crear transaction EARNED
-5. Actualizar tier si aplica
-
-### RedeemPointsUseCase
-**Dependencias**: ILoyaltyAccountRepository, IRewardRepository, IPointsTransactionRepository
-**Flujo**:
-1. Cargar account y verificar balance
-2. Si reward: verificar disponibilidad y consumir stock
-3. Redeem points del account
-4. Crear transaction REDEEMED
-5. Retornar descuento/beneficio aplicable
-
-### GetBalanceUseCase
-Retorna: current_balance, tier, total_earned, available_rewards_count
-
-### GetAvailableRewardsUseCase
-Retorna: lista de rewards activos del restaurante con cost y disponibilidad
+- `calculatePointsForOrder(orderTotal, rules)` → number
+  - Regla base: configurable por empresa (ej: 1 punto por euro)
+- `calculateDiscountValue(points, pointValue)` → number
+  - Valor configurable por empresa (ej: 1 punto = 0.01€)
 
 ## Dependencias Cross-Domain
 
 | Direccion | Port | Consumidor |
 |-----------|------|-----------|
 | Provee | ILoyaltyChecker (definido en Order) | Order — verificar/canjear puntos al pedir |
-| Consume | Order completado | Trigger para AwardPointsUseCase |
+| Consume | Order completado | Trigger para AwardPointsService |
 
-## Tests
+## Notas
 
-```
-tests/loyalty/
-+-- test_entities.py          # can_redeem, award, redeem, update_tier
-+-- test_services.py          # PointsCalculationService
-+-- test_award_points.py      # Use case
-+-- test_redeem_points.py     # Use case
-+-- test_get_balance.py       # Use case
-```
-
-## Deuda Tecnica / Notas
-
-- Dominio nuevo — sin legacy
-- Reglas de puntos (ratio EUR->puntos, multiplicadores) configurables por restaurante — necesita config store
-- Expiracion de puntos (ej: caducan a los 12 meses) — pendiente de implementar
-- Considerar eventos de dominio: OrderCompletedEvent -> AwardPointsUseCase
+- Puntos GLOBALES entre sedes de la misma empresa
+- Reglas de puntos (ratio EUR→puntos) configurables por empresa
+- El admin crea/edita recompensas desde el panel admin
+- Expiracion de puntos — pendiente, no en MVP

@@ -1,269 +1,195 @@
 # Use Case Patterns — Yantar
 
-## Que es un Use Case
+## Backend (NestJS Services)
 
-Un use case es el **unico punto de entrada** a la logica de negocio para una operacion concreta.
-Orquesta ports (interfaces) — no contiene logica de negocio ni conoce frameworks.
+### Convencion de Nombres
 
-### Responsabilidades
+| Patron | Ejemplo |
+|--------|---------|
+| Servicio | `CreateOrderService`, `GetMenuService` |
+| DTO Request | `CreateOrderRequest` |
+| DTO Response | `CreateOrderResponse` |
+| Archivo | `create-order.service.ts` |
+| Test | `create-order.service.spec.ts` |
 
-| Si hace | No hace |
-|---------|---------|
-| Orquestar ports en orden | Logica de negocio (-> domain service) |
-| Validar precondiciones de flujo | Validar reglas de negocio (-> entidad) |
-| Mapear DTOs <-> entidades | Acceder a BD/HTTP/frameworks |
-| Levantar errores de dominio | Manejar HTTP status codes (-> endpoint) |
-| Logging de operacion | Serializacion de respuesta HTTP |
+### Estructura de un Use Case
 
-**Regla de oro**: si la logica tiene sentido sin saber quien la llama (endpoint, webhook, CLI), pertenece al use case o mas abajo. Si depende de HTTP -> endpoint. Si es regla de negocio pura -> domain service/entity.
+Un archivo, una clase, un metodo `execute()`:
 
----
+```typescript
+// src/order/application/services/create-order.service.ts
+import { Injectable, Inject } from '@nestjs/common'
+import { IOrderRepository } from '../../domain/ports/order-repository.port'
+import { INotificationService } from '../../domain/ports/notification-service.port'
+import { Order } from '../../domain/entities/order.entity'
+import { CreateOrderRequest, CreateOrderResponse } from '../dtos/create-order.dto'
 
-## Backend (Python)
+@Injectable()
+export class CreateOrderService {
+  constructor(
+    @Inject('IOrderRepository')
+    private readonly orderRepo: IOrderRepository,
+    @Inject('INotificationService')
+    private readonly notifications: INotificationService,
+  ) {}
 
-### Estructura canonica
+  async execute(request: CreateOrderRequest): Promise<CreateOrderResponse> {
+    // 1. Crear entidad de dominio
+    const order = Order.create({
+      companyId: request.companyId,
+      branchId: request.branchId,
+      customerId: request.customerId,
+      items: request.items,
+      deliveryMode: request.deliveryMode,
+    })
 
-Un archivo por use case: `app/{domain}/application/{verb}_{noun}.py`
+    // 2. Persistir
+    const saved = await this.orderRepo.save(order)
 
-```python
-# app/order/application/create_order.py
-from uuid import UUID
-from decimal import Decimal
+    // 3. Side effects
+    await this.notifications.notifyNewOrder(saved)
 
-from app.order.domain.ports import IOrderRepository, INotificationService
-from app.order.domain.entities import Order
-from app.order.application.dtos import CreateOrderRequest, CreateOrderResult
-
-
-class CreateOrderUseCase:
-    """Orquesta la creacion de un pedido."""
-
-    def __init__(
-        self,
-        order_repo: IOrderRepository,
-        menu_repo: IMenuRepository,
-        loyalty_checker: ILoyaltyChecker,
-        notification_service: INotificationService,
-    ) -> None:
-        self._order_repo = order_repo
-        self._menu_repo = menu_repo
-        self._loyalty_checker = loyalty_checker
-        self._notification_service = notification_service
-
-    async def execute(self, request: CreateOrderRequest) -> CreateOrderResult:
-        # 1. Validar que los platos existen y obtener precios
-        dishes = await self._menu_repo.get_dishes_by_ids(request.dish_ids)
-        if len(dishes) != len(request.dish_ids):
-            raise DishNotFoundError("Uno o mas platos no encontrados")
-
-        # 2. Crear entidad (logica de negocio en la entidad)
-        order = Order.create(
-            customer_id=request.customer_id,
-            restaurant_id=request.restaurant_id,
-            items=request.items,
-            delivery_mode=request.delivery_mode,
-        )
-
-        # 3. Calcular total (domain service o entidad)
-        order.calculate_total(dishes)
-
-        # 4. Aplicar descuento por puntos si aplica
-        if request.redeem_points:
-            available = await self._loyalty_checker.get_available_points(request.customer_id)
-            order.apply_points_discount(available, request.redeem_points)
-
-        # 5. Persistir via port
-        await self._order_repo.save(order)
-
-        # 6. Notificar al restaurante
-        await self._notification_service.notify_new_order(order)
-
-        # 7. Retornar DTO de resultado
-        return CreateOrderResult(order_id=order.id, total=order.total, status=order.status)
+    // 4. Retornar DTO
+    return CreateOrderResponse.fromEntity(saved)
+  }
+}
 ```
 
 ### Reglas
 
-1. **Un archivo, una clase, un `execute()`** — nombre: `{Verb}{Noun}UseCase`
-2. **Constructor recibe ports** — nunca implementaciones concretas
-3. **`execute()` es async** — recibe un DTO de request, retorna un DTO de result
-4. **Sin imports de framework** — prohibido: fastapi, starlette, httpx, supabase, sqlmodel
-5. **Errores de dominio** — levantar `DomainError` y subclases, nunca `HTTPException`
-6. **Sin side-effects ocultos** — todo pasa por ports explicitos
+1. **Constructor recibe ports (interfaces)**, nunca implementaciones concretas
+2. **DTOs separados** — nunca reusar entidades como DTOs
+3. **Errores de dominio** — lanzar DomainError, nunca HttpException
+4. **Un servicio = un caso de uso** — no meter multiples operaciones en un servicio
+5. **@Injectable()** es la unica anotacion de NestJS permitida en application/
 
-### DTOs
+### DTOs con class-validator
 
-Viven en `app/{domain}/application/dtos.py`. Son Pydantic models planos:
+```typescript
+// src/order/application/dtos/create-order.dto.ts
+import { IsString, IsArray, IsEnum, ValidateNested } from 'class-validator'
+import { Type } from 'class-transformer'
 
-```python
-# app/order/application/dtos.py
-from pydantic import BaseModel, Field
-from uuid import UUID
-from decimal import Decimal
+export class CreateOrderRequest {
+  @IsString()
+  companyId: string
 
+  @IsString()
+  branchId: string
 
-class CreateOrderRequest(BaseModel):
-    customer_id: UUID
-    restaurant_id: UUID
-    items: list[OrderItemRequest]
-    delivery_mode: str
-    redeem_points: int = 0
-    notes: str = ""
+  @IsString()
+  customerId: string
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemRequest)
+  items: OrderItemRequest[]
 
-class CreateOrderResult(BaseModel):
-    order_id: UUID
-    total: Decimal
-    status: str
-    estimated_time_minutes: int | None = None
+  @IsEnum(DeliveryMode)
+  deliveryMode: DeliveryMode
+}
+
+export class CreateOrderResponse {
+  id: string
+  status: OrderStatus
+  total: number
+  createdAt: Date
+
+  static fromEntity(order: Order): CreateOrderResponse {
+    return {
+      id: order.id,
+      status: order.status,
+      total: order.total,
+      createdAt: order.createdAt,
+    }
+  }
+}
 ```
-
-**Reglas de DTOs:**
-- Sin logica de validacion de negocio (eso va en la entidad)
-- `Field()` solo para constraints de formato (min_length, regex)
-- Request y Result separados — nunca reusar la entidad como DTO
-- El endpoint mapea HTTP request -> DTO request, y DTO result -> HTTP response
 
 ### Cuando Use Case vs Domain Service
 
 | Situacion | Donde va |
 |-----------|----------|
-| Orquestar multiples ports | **Use Case** |
+| Orquestar multiples ports | **Use Case (Application Service)** |
 | Calcular precio total con descuentos | **Domain Service** o metodo de entidad |
 | Logica que no depende de estado externo | **Domain Service** |
 | Logica que necesita I/O (BD, API) | **Use Case** (orquesta ports) |
 | Regla que pertenece a una sola entidad | **Metodo de entidad** |
 
-Ejemplo: `calculate_total()` es metodo de entidad o domain service. `CreateOrderUseCase` es use case (necesita leer platos de BD via port, notificar).
-
 ### Manejo de Errores
 
-```python
-# En el use case — levantar errores de dominio
-from app.shared.domain.errors import NotFoundError, InsufficientPointsError
+```typescript
+// En el use case — lanzar errores de dominio
+import { OrderNotFoundError } from '../../domain/errors/order-not-found.error'
 
-async def execute(self, request):
-    order = await self._order_repo.find_by_id(request.order_id)
-    if not order:
-        raise NotFoundError(f"Order {request.order_id}")
-    ...
+async execute(request) {
+  const order = await this.orderRepo.getById(request.orderId)
+  if (!order) {
+    throw new OrderNotFoundError(request.orderId)
+  }
+}
 
-# En el endpoint — traducir a HTTP
-@router.post("/orders")
-async def create_order(...):
-    try:
-        result = await use_case.execute(request)
-        return result
-    except InsufficientPointsError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except NotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-```
-
-### Idempotencia
-
-Para use cases llamados desde webhooks o procesos que reintentan:
-
-```python
-async def execute(self, request):
-    existing = await self._repo.find_by_id(request.id)
-    if existing and existing.is_processed:
-        return None  # Ya procesado, no-op
-    ...
+// En el controller — el DomainExceptionFilter traduce automaticamente
+// No hace falta try/catch manual en cada controller
 ```
 
 ---
 
-## Frontend (TypeScript/React)
+## Controller (Infrastructure)
 
-### Estructura canonica
-
-Un archivo por hook: `domains/{domain}/application/use-{feature}.ts`
+El controller solo traduce HTTP <-> DTOs y delega al servicio:
 
 ```typescript
-// domains/order/application/use-cart.ts
-import { useCallback, useMemo, useState } from "react"
-import type { IOrderApi } from "./ports"
-import type { CartItem, CartSummary } from "../domain/types"
+// src/order/infrastructure/controllers/order.controller.ts
+@Controller('orders')
+export class OrderController {
+  constructor(private readonly createOrder: CreateOrderService) {}
 
-export function useCart(orderApi: IOrderApi) {
-  const [items, setItems] = useState<CartItem[]>([])
-
-  const total = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [items]
-  )
-
-  const addItem = useCallback((item: CartItem) => {
-    setItems(prev => {
-      const existing = prev.find(i => i.dishId === item.dishId)
-      if (existing) {
-        return prev.map(i =>
-          i.dishId === item.dishId
-            ? { ...i, quantity: i.quantity + item.quantity }
-            : i
-        )
-      }
-      return [...prev, item]
+  @Post()
+  @UseGuards(AuthGuard)
+  async create(
+    @Body() request: CreateOrderRequest,
+    @CurrentUser() user: AuthUser,
+  ): Promise<CreateOrderResponse> {
+    return this.createOrder.execute({
+      ...request,
+      customerId: user.id,
     })
-  }, [])
-
-  const removeItem = useCallback((dishId: string) => {
-    setItems(prev => prev.filter(i => i.dishId !== dishId))
-  }, [])
-
-  const submitOrder = useCallback(async () => {
-    return orderApi.createOrder({ items })
-  }, [orderApi, items])
-
-  return { items, total, addItem, removeItem, submitOrder }
+  }
 }
 ```
 
-### Reglas
+**El controller NO contiene logica de negocio.**
 
-1. **Un archivo, un hook** — nombre: `use-{feature}.ts`
-2. **Ports como parametros** — recibe interfaces, no implementaciones
-3. **Prohibido**: `@supabase/supabase-js`, `createSupabaseServerClient`, `@/lib/supabase/server`
-4. **Permitido**: React hooks (`useState`, `useCallback`, `useMemo`, `useRef`), tipos del dominio
-5. **Sin UI** — no retorna JSX, solo datos y handlers
-6. **Tests colocados** — `use-{feature}.test.ts` junto al hook
+---
 
-### Ports
+## Frontend Hooks (Feature Layer)
 
-Viven en `domains/{domain}/application/ports.ts`:
+Cada operacion tiene su propio hook con React Query:
 
 ```typescript
-// domains/order/application/ports.ts
-export interface IOrderApi {
-  createOrder(params: { items: CartItem[] }): Promise<CreateOrderResult>
-  getOrderStatus(orderId: string): Promise<OrderStatus>
+// src/features/orders/hooks/use-create-order.ts
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
+
+export function useCreateOrder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (request: CreateOrderRequest) =>
+      apiClient.post<CreateOrderResponse>('/orders', request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
 }
 
-export interface IMenuApi {
-  getDishes(restaurantId: string, filters?: DishFilters): Promise<Dish[]>
-  getDishDetail(dishId: string): Promise<DishDetail>
-}
-```
-
-### State Management en hooks
-
-```typescript
-// Patron para hooks con estado complejo
-export function useMenuBrowser(initialDishes: Dish[]) {
-  // Estado local
-  const [dishes] = useState<Dish[]>(initialDishes)
-  const [category, setCategory] = useState<string>("all")
-  const [allergenFilters, setAllergenFilters] = useState<string[]>([])
-
-  // Estado derivado
-  const filteredDishes = useMemo(() =>
-    dishes
-      .filter(d => category === "all" || d.category === category)
-      .filter(d => allergenFilters.every(a => !d.allergens.includes(a))),
-    [dishes, category, allergenFilters]
-  )
-
-  return { dishes: filteredDishes, category, setCategory, allergenFilters, setAllergenFilters }
+// Para queries
+export function useOrderStatus(orderId: string) {
+  return useQuery({
+    queryKey: ['orders', orderId, 'status'],
+    queryFn: () => apiClient.get<OrderStatusResponse>(`/orders/${orderId}/status`),
+    refetchInterval: 10_000, // Poll cada 10s como fallback del WebSocket
+  })
 }
 ```

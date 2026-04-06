@@ -1,242 +1,264 @@
 # Architecture Rules — Yantar
 
+## Stack Tecnologico
+
+| Componente | Tecnologia |
+|------------|-----------|
+| Backend | NestJS (TypeScript) |
+| ORM | Prisma |
+| Base de datos | PostgreSQL (local → Supabase) |
+| Frontend | Next.js 14+ (App Router, TypeScript) |
+| Auth | Supabase Auth (JWT) |
+| Tiempo real | WebSockets (NestJS Gateway) |
+| Monorepo | pnpm workspaces + Turborepo |
+| Testing | Jest + Testing Library |
+| UI Components | shadcn/ui + Tailwind CSS |
+
 ## Regla Fundamental de Data Access
 
-| Componente | Supabase SDK | SQLModel + AsyncSession |
-|------------|-------------|------------------------|
+| Componente | Supabase SDK | Prisma Client |
+|------------|-------------|---------------|
 | **Auth** (JWT, login, getUser) | SI — unico uso permitido | NO |
 | **Data persistence** (queries, mutations) | NO — prohibido para datos | SI — unico mecanismo |
 
-- **Supabase SDK** se usa EXCLUSIVAMENTE para autenticacion (validar JWT, `supabase.auth.*`)
-- **SQLModel + AsyncSession + asyncpg** es el unico ORM/mecanismo para acceso a datos (queries, inserts, updates, deletes)
-- En frontend, Supabase solo para auth; todo data access va via HTTP al backend FastAPI
+- **Supabase SDK** se usa EXCLUSIVAMENTE para autenticacion (validar JWT, registro, login)
+- **Prisma Client** es el unico ORM para acceso a datos
+- En frontend, Supabase solo para auth; todo data access via HTTP al backend NestJS
 
-## Backend (Python/FastAPI)
+## Backend (NestJS)
 
-Enforced by `yantar_backend/tests/test_architecture.py`.
+Enforced by `apps/backend/test/architecture.spec.ts`.
 
 ### Capas y Restricciones de Imports
 
 ```
 +-----------------------------+
-|  infrastructure/            |  <- Puede importar todo
-|   http/      -> endpoints   |
-|   persistence/ -> repos     |
+|  infrastructure/            |  ← Puede importar todo
+|   controllers/ → endpoints  |
+|   repositories/ → Prisma    |
+|   gateways/ → WebSocket     |
+|   adapters/ → externos      |
 +-----------------------------+
-|  application/               |  <- NO frameworks
-|   use cases, DTOs           |
+|  application/               |  ← NO frameworks (NestJS, Prisma)
+|   services (use cases)      |
+|   dtos/                     |
 +-----------------------------+
-|  domain/                    |  <- NO frameworks
+|  domain/                    |  ← NO frameworks
 |   entities, ports, v.o.     |
 +-----------------------------+
 ```
 
-**Modulos prohibidos en domain/ y application/:**
-```python
-FRAMEWORK_MODULES = {
-    "fastapi",
-    "starlette",
-    "httpx",
-    "supabase",
-    "postgrest",
-    "uvicorn",
-    "sqlmodel",
-}
+**Prohibido en domain/ y application/:**
+```typescript
+// Estos imports NO deben aparecer en domain/ ni application/
+import { ... } from '@nestjs/*'
+import { ... } from '@prisma/client'
+import { ... } from '@supabase/*'
 ```
 
 **Permitido en domain/application:**
-- stdlib (uuid, datetime, typing, abc, enum, dataclasses)
-- pydantic (para entidades — `app/shared/domain/entity.py` usa `BaseModel`)
-- Tipos propios del dominio
+- TypeScript nativo (interfaces, types, enums, classes)
+- Tipos de `packages/shared`
+- Librerias de validacion pura (class-validator en DTOs)
 
-### Estructura por Bounded Context
+### Estructura por Bounded Context (Modulo NestJS)
 
 ```
-app/{domain}/
+apps/backend/src/{domain}/
   domain/
-    entities.py      # Entidades con logica de negocio (extienden Entity)
-    ports.py         # Interfaces ABC (repositories, servicios externos)
-    value_objects.py # Enums, tipos inmutables
-    services.py      # Servicios de dominio (logica que no pertenece a una entidad)
-    errors.py        # Errores de dominio (opcional, o usar shared)
+    entities/          # Clases puras TS con logica de negocio
+    ports/             # Interfaces (repositories, servicios externos)
+    value-objects/     # Enums, tipos inmutables
+    services/          # Servicios de dominio (logica que no pertenece a una entidad)
+    errors/            # Errores de dominio (extienden DomainError)
   application/
-    {use_case}.py    # Un archivo por use case, orquesta ports (ver use-case-patterns.md)
-    dtos.py          # Request/Result DTOs (Pydantic models planos)
+    services/          # Un servicio por use case, orquesta ports
+    dtos/              # Request/Response DTOs (class-validator)
   infrastructure/
-    http/
-      endpoints.py   # FastAPI routers — traduce HTTP <-> DTOs, inyecta use cases
-      {adapter}.py   # Adapters de servicios externos (pasarela pago, notificaciones)
-    persistence/
-      {repo}.py      # Implementaciones de repository ports (SQLModel + AsyncSession)
+    controllers/       # NestJS controllers — traduce HTTP ↔ DTOs
+    repositories/      # Implementaciones Prisma de los ports
+    gateways/          # WebSocket gateways (si aplica)
+    adapters/          # Adapters de servicios externos
+  {domain}.module.ts   # NestJS module — registra providers e imports
 ```
 
-**Regla de subdivision de infrastructure/:**
-- `http/` — todo lo que entra o sale por HTTP: endpoints, adapters de APIs externas, middleware
-- `persistence/` — todo lo que toca base de datos: repositories SQLModel + AsyncSession, queries
-- Si un adapter no es HTTP ni persistence (ej: push notifications, file storage), crear subcarpeta con nombre descriptivo
+**Inyeccion de dependencias** — NestJS DI nativa:
+```typescript
+// {domain}.module.ts
+@Module({
+  controllers: [OrderController],
+  providers: [
+    CreateOrderService,
+    { provide: 'IOrderRepository', useClass: PrismaOrderRepository },
+    { provide: 'INotificationService', useClass: WebSocketNotificationAdapter },
+  ],
+  exports: [CreateOrderService],
+})
+export class OrderModule {}
 
-**Inyeccion de dependencias** — el endpoint construye el grafo:
-```python
-# infrastructure/http/endpoints.py
-def _build_use_cases(db: AsyncSession):
-    repo = SQLModelOrderRepo(db)
-    notification_svc = PushNotificationAdapter(settings)
-    return CreateOrderUseCase(order_repo=repo, notification_service=notification_svc)
+// application/services/create-order.service.ts
+@Injectable()
+export class CreateOrderService {
+  constructor(
+    @Inject('IOrderRepository') private readonly orderRepo: IOrderRepository,
+    @Inject('INotificationService') private readonly notifications: INotificationService,
+  ) {}
+}
 ```
 
 ### Cross-Domain Communication
 
 **Regla**: Un dominio NO importa directamente de otro dominio. La comunicacion es a traves de **ports**.
 
-Ejemplo canonico — Order necesita verificar puntos de Loyalty:
+```typescript
+// order/domain/ports/loyalty-checker.port.ts
+export interface ILoyaltyChecker {
+  getAvailablePoints(customerId: string): Promise<number>
+  redeemPoints(customerId: string, points: number): Promise<void>
+}
 
-```python
-# app/order/domain/ports.py
-class ILoyaltyChecker(ABC):
-    """Port for checking loyalty points (from Loyalty domain)."""
-    @abstractmethod
-    async def get_available_points(self, customer_id: UUID) -> int: ...
-    @abstractmethod
-    async def redeem_points(self, customer_id: UUID, points: int) -> None: ...
-
-# app/order/infrastructure/loyalty_adapter.py (implementa el port)
-from app.loyalty.application.check_points import CheckPointsUseCase
-
-class LoyaltyCheckerAdapter(ILoyaltyChecker):
-    async def get_available_points(self, customer_id):
-        return await self.loyalty_use_case.execute(customer_id)
+// order/infrastructure/adapters/loyalty-checker.adapter.ts
+@Injectable()
+export class LoyaltyCheckerAdapter implements ILoyaltyChecker {
+  constructor(private readonly loyaltyService: GetBalanceService) {}
+  
+  async getAvailablePoints(customerId: string): Promise<number> {
+    return this.loyaltyService.execute(customerId)
+  }
+}
 ```
 
-El adapter vive en **infrastructure/** del dominio consumidor, y puede importar del dominio proveedor.
+El adapter vive en **infrastructure/** del dominio consumidor.
 
 ### Errores de Dominio
 
-Usar la jerarquia de `app/shared/domain/errors.py`:
-```python
-from app.shared.domain.errors import DomainError
+```typescript
+// shared/domain/errors/domain-error.ts
+export abstract class DomainError extends Error {
+  abstract readonly code: string
+}
 
-class OrderNotFoundError(DomainError): ...
-class InsufficientPointsError(DomainError): ...
-class TableNotAvailableError(DomainError): ...
+// order/domain/errors/order-not-found.error.ts
+export class OrderNotFoundError extends DomainError {
+  readonly code = 'ORDER_NOT_FOUND'
+}
 ```
 
-### Entity Base
-
-Todas las entidades extienden `app/shared/domain/entity.py`:
-```python
-from app.shared.domain.entity import Entity
-
-class Order(Entity):
-    customer_id: UUID
-    restaurant_id: UUID
-    status: OrderStatus
-    # ... business logic methods
+Los controllers atrapan DomainError y traducen a HTTP:
+```typescript
+// shared/infrastructure/filters/domain-exception.filter.ts
+@Catch(DomainError)
+export class DomainExceptionFilter implements ExceptionFilter {
+  catch(exception: DomainError, host: ArgumentsHost) {
+    // Mapea code → HTTP status
+  }
+}
 ```
 
 ### Multi-Tenancy
 
-**Regla critica**: Toda query de datos DEBE filtrar por `restaurant_id`.
+**Regla critica**: Toda query DEBE filtrar por `companyId` (o `branchId` cuando aplique).
 
-```python
-# CORRECTO
-async def get_orders(self, restaurant_id: UUID, customer_id: UUID) -> list[Order]:
-    stmt = select(OrderModel).where(
-        OrderModel.restaurant_id == restaurant_id,
-        OrderModel.customer_id == customer_id
-    )
+```typescript
+// CORRECTO
+async getOrders(companyId: string, branchId: string): Promise<Order[]> {
+  return this.prisma.order.findMany({
+    where: { companyId, branchId }
+  })
+}
 
-# INCORRECTO — falta filtro de tenant
-async def get_orders(self, customer_id: UUID) -> list[Order]:
-    stmt = select(OrderModel).where(OrderModel.customer_id == customer_id)
+// INCORRECTO — falta filtro de tenant
+async getOrders(customerId: string): Promise<Order[]> {
+  return this.prisma.order.findMany({
+    where: { customerId }
+  })
+}
 ```
 
 ---
 
-## Frontend (Next.js/TypeScript)
+## Frontend (Next.js App Router)
 
-Enforced by `yantar-frontend/domains/architecture.test.ts`.
+Enforced by `apps/web/test/architecture.spec.ts`.
 
-### Capas y Restricciones
+### Estructura de Rutas (Route Groups)
 
 ```
-+-----------------------------+
-|  ui/                        |  <- React components, puede importar todo
-|   Component.tsx             |
-+-----------------------------+
-|  infrastructure/            |  <- Supabase (SOLO auth), fetch, Next.js
-|   http/  -> api-adapter     |
-|   queries/ -> server-queries|
-+-----------------------------+
-|  application/               |  <- React hooks OK, NO Supabase server
-|   use-{feature}.ts, ports.ts|
-+-----------------------------+
-|  domain/                    |  <- TypeScript puro, NO React/Supabase/Next
-|   types.ts, rules.ts       |
-+-----------------------------+
+apps/web/src/app/
+  (customer)/              ← Web-app de pedidos (dominio del restaurante)
+    menu/
+    cart/
+    checkout/
+    orders/
+    layout.tsx             ← Layout con branding del restaurante
+  (admin)/                 ← Panel de administracion
+    dashboard/
+    menu-management/
+    branches/
+    settings/
+    layout.tsx             ← Layout del panel admin
+  (operativo)/             ← Vista operativa / cocina
+    orders/
+    layout.tsx             ← Layout tablet-friendly
+  (auth)/                  ← Login, registro, perfil
+    login/
+    register/
+    profile/
+  layout.tsx               ← Root layout
 ```
 
-**Prohibido en domain/:**
-- `@supabase/*`
-- `createSupabase*`
-- `@/lib/supabase`
-- `next/*`
+### Feature-Based Organization
 
-**Prohibido en application/:**
-- `@supabase/supabase-js`
-- `createSupabaseServerClient`
-- `@/lib/supabase/server`
-
-### Compound Components Pattern
-
-Para componentes con multiples piezas coordinadas, usar `Object.assign`:
-
-```tsx
-// Cart.tsx
-function CartRoot({ children }: CartProps) {
-  return (
-    <CartProvider>
-      {children}
-    </CartProvider>
-  )
-}
-
-export const Cart = Object.assign(CartRoot, {
-  Items: CartItems,
-  Summary: CartSummary,
-  Actions: CartActions,
-  DeliverySelector: CartDeliverySelector,
-})
-
-// Usage:
-<Cart>
-  <Cart.Items />
-  <Cart.Summary />
-  <Cart.DeliverySelector />
-  <Cart.Actions />
-</Cart>
+```
+apps/web/src/features/
+  cart/
+    hooks/                 ← useCart, useCartActions
+    components/            ← CartDrawer, CartItem, CartSummary
+    types/                 ← Cart, CartItem interfaces
+    lib/                   ← Logica pura (calculos de precios)
+  menu/
+    hooks/
+    components/
+    types/
+    lib/
+  orders/
+    hooks/
+    components/
+    types/
+    lib/
 ```
 
-**Cuando usar compound components:**
-- El componente tiene 3+ sub-componentes coordinados
-- Comparten contexto (Provider pattern)
-- El usuario necesita flexibilidad de composicion
+### Shared UI
 
-### Shared UI Primitives
-
-Viven en `components/ui/`. Agregar nuevas requiere justificacion:
-- Es reutilizable en 2+ dominios?
-- No existe ya en shadcn/ui?
-- Encapsula un patron recurrente?
+```
+apps/web/src/components/
+  ui/                      ← shadcn/ui components
+  layout/                  ← Headers, footers, sidebars por vista
+```
 
 ### Theming White-Label
 
-Cada restaurante define su tema. Los componentes NUNCA usan colores hardcoded:
-```typescript
-// CORRECTO — usa variables de tema
+Cada empresa define su tema. Los componentes NUNCA usan colores hardcoded:
+```tsx
+// CORRECTO — usa variables CSS del tema
 className="bg-primary text-primary-foreground"
 
 // INCORRECTO — color hardcoded
 className="bg-red-500 text-white"
 ```
 
-El tema se carga desde la configuracion del restaurante y se aplica via CSS custom properties.
+El tema se carga desde la config de la empresa y se aplica via CSS custom properties:
+```typescript
+// Cargado desde el backend al acceder al dominio del restaurante
+:root {
+  --primary: ${company.branding.colors.primary};
+  --secondary: ${company.branding.colors.secondary};
+  // ...
+}
+```
+
+### Data Fetching
+
+- **Server Components** para datos estaticos (carta, info del restaurante)
+- **Client Components + SWR/React Query** para datos dinamicos (estado del pedido, carrito)
+- **WebSocket** para tiempo real (pedidos entrantes en vista operativa)

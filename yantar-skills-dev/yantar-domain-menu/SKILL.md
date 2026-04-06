@@ -2,120 +2,119 @@
 name: yantar-domain-menu
 description: >
   Documentacion viva del bounded context Menu: carta del restaurante,
-  platos, categorias, precios, personalizaciones disponibles, y fotos.
+  platos, categorias, variantes, modificadores configurables, precios e imagenes.
 ---
 
 # Menu Domain
 
 ## Proposito
 
-Gestiona el catalogo de platos del restaurante, organizado por categorias (entrantes, principales, postres, bebidas, etc.). Cada plato tiene precios, fotos, descripcion, personalizaciones disponibles, y alergenos asociados. El menu es configurable por cada restaurante.
+Gestiona el catalogo de platos de la empresa, organizado por categorias. Cada plato tiene precios, fotos, descripcion, y un sistema configurable de variantes (tamaños) y modificadores (extras, eliminaciones). La carta es compartida entre todas las sedes de una empresa.
 
 ## Mapa de Archivos
 
 ```
-yantar_backend/app/menu/
-+-- domain/
-|   +-- entities.py          # Dish, Category, DishCustomizationOption
-|   +-- ports.py             # IDishRepository, ICategoryRepository
-|   +-- value_objects.py     # DishStatus, Price, DishTag
-|   +-- services.py          # MenuValidationService
-|   +-- errors.py            # DishNotFoundError, CategoryNotFoundError
-+-- application/
-|   +-- dtos.py              # DishDTO, CategoryDTO, MenuDTO
-|   +-- get_menu.py          # GetMenuUseCase (carta completa)
-|   +-- get_dish_detail.py   # GetDishDetailUseCase (con alergenos)
-|   +-- create_dish.py       # CreateDishUseCase (admin)
-|   +-- update_dish.py       # UpdateDishUseCase (admin)
-|   +-- toggle_dish_availability.py  # ToggleDishAvailabilityUseCase
-|   +-- manage_categories.py # ManageCategoriesUseCase (CRUD categorias)
-+-- infrastructure/
-    +-- http/
-    |   +-- endpoints.py          # /menu, /dishes routes
-    |   +-- image_adapter.py      # Upload de fotos de platos
-    +-- persistence/
-        +-- sqlmodel_dish_repo.py      # IDishRepository -> SQLModel
-        +-- sqlmodel_category_repo.py  # ICategoryRepository -> SQLModel
+apps/backend/src/menu/
+├── domain/
+│   ├── entities/
+│   │   ├── dish.entity.ts              # Plato
+│   │   ├── category.entity.ts          # Categoria
+│   │   ├── variant-group.entity.ts     # Grupo de variantes (ej: tamaño)
+│   │   └── modifier-group.entity.ts    # Grupo de modificadores (ej: extras)
+│   ├── ports/
+│   │   ├── dish-repository.port.ts
+│   │   └── category-repository.port.ts
+│   ├── value-objects/
+│   │   ├── dish-status.enum.ts         # ACTIVE, INACTIVE
+│   │   ├── variant-option.vo.ts        # Opcion dentro de un grupo de variantes
+│   │   └── modifier-option.vo.ts       # Opcion dentro de un grupo de modificadores
+│   ├── services/
+│   │   └── menu-validation.service.ts
+│   └── errors/
+│       ├── dish-not-found.error.ts
+│       └── category-not-found.error.ts
+├── application/
+│   ├── services/
+│   │   ├── get-menu.service.ts                # Carta completa (customer)
+│   │   ├── get-dish-detail.service.ts         # Detalle con variantes/modificadores
+│   │   ├── create-dish.service.ts             # Admin
+│   │   ├── update-dish.service.ts             # Admin
+│   │   ├── toggle-dish-availability.service.ts # Feature flag on/off
+│   │   └── manage-categories.service.ts       # CRUD categorias
+│   └── dtos/
+│       ├── dish.dto.ts
+│       ├── category.dto.ts
+│       └── menu.dto.ts
+├── infrastructure/
+│   ├── controllers/
+│   │   ├── menu.controller.ts           # /menu routes (publicas, customer)
+│   │   └── admin-menu.controller.ts     # /admin/menu routes
+│   ├── repositories/
+│   │   ├── prisma-dish.repository.ts
+│   │   └── prisma-category.repository.ts
+│   └── adapters/
+│       └── image-upload.adapter.ts      # Subida de fotos de platos
+└── menu.module.ts
 ```
 
 ## Entidades
 
-### Dish
-- **Campos**: `restaurant_id`, `category_id`, `name`, `description`, `price`, `image_url`, `status`, `sort_order`, `tags[]`, `customization_options[]`, `allergen_ids[]`, `ingredients[]`, `nutritional_info{}`, `preparation_time_minutes`
+### Dish (Plato)
+- **Campos**: `id`, `companyId`, `categoryId`, `name`, `description`, `basePrice`, `imageUrl`, `status` (ACTIVE/INACTIVE), `variantGroups[]`, `modifierGroups[]`, `allergenCodes[]`, `sortOrder`
 - **Logica**:
-  - `is_available()` -> status == AVAILABLE
-  - `publish()` -> DRAFT -> AVAILABLE
-  - `unpublish()` -> AVAILABLE -> UNAVAILABLE
-  - `archive()` -> -> ARCHIVED
-  - `has_allergen(allergen_id)` -> bool
-  - `matches_dietary_filter(excluded_allergens[])` -> true si no contiene ninguno
+  - `isAvailable()` → status === ACTIVE
+  - `calculatePrice(selectedVariant, selectedModifiers[])` → basePrice + variant.priceAdjustment + sum(modifier.extraPrice)
+  - `toggleAvailability()` → cambia status
 
 ### Category
-- **Campos**: `restaurant_id`, `name`, `description`, `sort_order`, `icon`, `is_active`
-- **Logica**: `has_dishes()`, `activate()`, `deactivate()`
+- **Campos**: `id`, `companyId`, `name`, `description`, `imageUrl`, `sortOrder`, `isActive`
 
-### DishCustomizationOption
-- **Campos**: `name` (ej: "Extra salsa", "Sin cebolla"), `type` (ADD/REMOVE/REPLACE), `extra_price`, `is_default`
+### VariantGroup (Grupo de variantes)
+- **Campos**: `id`, `dishId`, `name` (ej: "Tamaño"), `required` (siempre true — obligatorio elegir), `options[]` (VariantOption)
+- **Regla**: seleccion unica (radio) — el cliente elige UNA opcion
 
-## Value Objects
+### VariantOption
+- **Campos**: `id`, `name` (ej: "Grande"), `priceAdjustment` (ej: +2.00 sobre basePrice)
 
-- **DishStatus**: `DRAFT`, `AVAILABLE`, `UNAVAILABLE`, `ARCHIVED`
-- **Price**: value object validado >= 0, con `format_display()` -> "12,50 EUR"
-- **DishTag**: `VEGETARIAN`, `VEGAN`, `GLUTEN_FREE`, `SPICY`, `NEW`, `POPULAR`, `CHEF_RECOMMENDATION`
+### ModifierGroup (Grupo de modificadores)
+- **Campos**: `id`, `dishId`, `name` (ej: "Extras", "Sin ingredientes"), `required`, `selectionType` (SINGLE/MULTIPLE), `minSelections`, `maxSelections`, `options[]` (ModifierOption)
+- **Logica**:
+  - `validateSelection(selectedCount)` → cumple min/max y required?
+
+### ModifierOption
+- **Campos**: `id`, `name` (ej: "Extra queso", "Sin cebolla"), `extraPrice` (0 si es eliminacion)
 
 ## Ports (Interfaces)
 
 ### IDishRepository
-```python
-get_by_id(dish_id, restaurant_id) -> Dish | None
-get_by_ids(dish_ids, restaurant_id) -> list[Dish]
-get_by_category(category_id, restaurant_id) -> list[Dish]
-get_available(restaurant_id) -> list[Dish]
-get_filtered(restaurant_id, category_id?, allergen_exclude?, tags?) -> list[Dish]
-create(dish) -> Dish
-update(dish) -> Dish
-update_status(dish_id, status) -> Dish
+```typescript
+getByCompany(companyId: string, filters?: { categoryId?: string, status?: DishStatus }): Promise<Dish[]>
+getById(dishId: string, companyId: string): Promise<Dish | null>
+getByIds(dishIds: string[], companyId: string): Promise<Dish[]>
+create(dish: Dish): Promise<Dish>
+update(dish: Dish): Promise<Dish>
 ```
 
 ### ICategoryRepository
-```python
-get_all(restaurant_id) -> list[Category]
-get_by_id(category_id, restaurant_id) -> Category | None
-create(category) -> Category
-update(category) -> Category
-reorder(category_ids) -> None
+```typescript
+getByCompany(companyId: string): Promise<Category[]>
+getById(categoryId: string, companyId: string): Promise<Category | null>
+create(category: Category): Promise<Category>
+update(category: Category): Promise<Category>
+delete(categoryId: string, companyId: string): Promise<void>
 ```
-
-## Servicios de Dominio
-
-### MenuValidationService
-- `ensure_dish_complete(dish)` -> raises si faltan campos obligatorios (name, price, category)
-- `validate_customization_options(options)` -> raises si precios negativos
 
 ## Dependencias Cross-Domain
 
 | Direccion | Consumidor | Detalle |
 |-----------|-----------|---------|
-| Provee | Order | Validacion de platos y precios al crear pedido |
-| Provee | Frontend Menu | Datos de carta para navegacion |
-| Consume | Allergen | IDs de alergenos asociados a platos |
-| Consume | Restaurant | restaurant_id para multi-tenancy |
+| Provee | Order | Platos, precios, validacion de variantes/modificadores |
+| Provee | Allergen | allergenCodes[] en cada plato |
+| Provee | Frontend Customer | Carta navegable con filtros |
 
-## Tests
+## Notas
 
-```
-tests/menu/
-+-- test_entities.py          # Dish state transitions, matches_dietary_filter
-+-- test_services.py          # MenuValidationService
-+-- test_get_menu.py          # Use case
-+-- test_create_dish.py       # Use case
-+-- test_toggle_availability.py  # Use case
-```
-
-## Deuda Tecnica / Notas
-
-- Dominio nuevo — sin legacy
-- `nutritional_info` es JSONB sin schema validado — considerar value object
-- Upload de imagenes necesita definir estrategia (Cloud Storage, CDN)
-- `sort_order` manual — considerar drag & drop reordering en admin
-- Precios en Decimal para evitar errores de punto flotante
+- La carta es GLOBAL a la empresa (compartida entre sedes)
+- Disponibilidad (on/off) es un feature flag simple, no por horario
+- Imagenes: Supabase Storage en produccion, filesystem local al principio
+- sortOrder permite al admin ordenar categorias y platos manualmente

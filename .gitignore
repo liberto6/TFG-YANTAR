@@ -1,21 +1,22 @@
 # Dependencies
 node_modules/
-vendor/
 
-# Build output
+# Build outputs
 dist/
-build/
 .next/
 out/
 
-# Environment variables
+# Turbo
+.turbo/
+
+# Environment
 .env
 .env.local
 .env.*.local
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
@@ -23,13 +24,12 @@ out/
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
-
-# Coverage
+# Testing
 coverage/
 
-# Temp
-tmp/
-.tmp/
+# Prisma
+apps/backend/prisma/*.db
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*

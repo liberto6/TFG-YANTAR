@@ -1,167 +1,191 @@
 # TDD Workflow — Yantar
 
-## Secuencia Obligatoria
+## Herramientas
 
-### Paso 1: Identificar dominio(s) afectados
-Consultar el skill de dominio para entender entidades, ports y use cases existentes.
+| Componente | Framework de Testing |
+|------------|---------------------|
+| Backend (NestJS) | Jest |
+| Frontend (Next.js) | Jest + React Testing Library |
+| E2E (si aplica) | Supertest (API) |
 
-### Paso 2: Escribir test PRIMERO
+## Donde aplicar TDD estricto
 
-**Backend** — en `yantar_backend/tests/{domain}/test_{feature}.py`:
+### Obligatorio (Red → Green → Refactor)
+- `domain/entities/` — logica de negocio en entidades
+- `domain/services/` — servicios de dominio (funciones puras)
+- `domain/value-objects/` — validaciones y reglas
+- `application/services/` — use cases
 
-```python
-# tests/order/test_create_order.py
-import pytest
-from unittest.mock import AsyncMock
-from uuid import uuid4
+### Tests pero no TDD estricto
+- `infrastructure/controllers/` — tests de integracion e2e
+- Frontend: tests de componentes clave
+- WebSocket gateways
 
-from app.order.application.create_order import CreateOrderUseCase
-from app.order.domain.entities import Order
-from app.order.domain.value_objects import OrderStatus, DeliveryMode
+## Ciclo TDD
 
-
-@pytest.mark.asyncio
-async def test_create_order_calculates_total_and_persists(
-    mock_order_repo, mock_menu_repo, mock_loyalty_checker
-):
-    """Given a cart with valid items, creating an order calculates total and saves."""
-    customer_id = uuid4()
-    restaurant_id = uuid4()
-
-    use_case = CreateOrderUseCase(
-        order_repo=mock_order_repo,
-        menu_repo=mock_menu_repo,
-        loyalty_checker=mock_loyalty_checker,
-    )
-
-    result = await use_case.execute(
-        customer_id=customer_id,
-        restaurant_id=restaurant_id,
-        items=[{"dish_id": uuid4(), "quantity": 2, "customizations": []}],
-        delivery_mode=DeliveryMode.DINE_IN,
-    )
-
-    assert result.status == OrderStatus.PENDING
-    assert result.total > 0
-    mock_order_repo.save.assert_called_once()
-```
-
-**Frontend** — colocado junto al modulo `{module}.test.ts`:
+### 1. Escribir el test (RED)
 
 ```typescript
-// domains/order/application/use-cart.test.ts
-import { describe, it, expect } from "vitest"
-import { renderHook, act } from "@testing-library/react"
-import { useCart } from "./use-cart"
-
-describe("useCart", () => {
-  it("starts with empty cart", () => {
-    const { result } = renderHook(() => useCart())
-    expect(result.current.items).toEqual([])
-    expect(result.current.total).toBe(0)
+// src/order/domain/entities/order.entity.spec.ts
+describe('Order', () => {
+  it('should transition from PENDING to CONFIRMED', () => {
+    const order = OrderFactory.createPending()
+    
+    order.confirm()
+    
+    expect(order.status).toBe(OrderStatus.CONFIRMED)
   })
-
-  it("adds item and recalculates total", () => {
-    const { result } = renderHook(() => useCart())
-    act(() => result.current.addItem({ dishId: "1", name: "Paella", price: 12.50, quantity: 1 }))
-    expect(result.current.items).toHaveLength(1)
-    expect(result.current.total).toBe(12.50)
+  
+  it('should throw when confirming a cancelled order', () => {
+    const order = OrderFactory.createCancelled()
+    
+    expect(() => order.confirm()).toThrow(InvalidOrderTransitionError)
   })
 })
 ```
 
-### Paso 3: Ejecutar test -> confirmar que FALLA
+### 2. Verificar que FALLA
 
 ```bash
-# Backend
-cd yantar_backend && python -m pytest tests/{domain}/test_{feature}.py -v
-
-# Frontend
-cd yantar-frontend && npx vitest run {path-to-test}
+pnpm --filter backend test -- --testPathPattern=order.entity
 ```
 
-El test DEBE fallar con un error claro (import error o assertion failure, NO syntax error).
+El test debe fallar porque el codigo aun no existe.
 
-### Paso 4: Implementar capa por capa
+### 3. Implementar (GREEN)
 
-**Orden backend:**
-1. `domain/entities.py` — entidades con logica de negocio
-2. `domain/value_objects.py` — enums, tipos
-3. `domain/ports.py` — interfaces ABC
-4. `domain/services.py` — servicios de dominio (si aplica)
-5. `application/dtos.py` — Request/Result DTOs
-6. `application/{use_case}.py` — orquestacion (ver `use-case-patterns.md`)
-7. `infrastructure/persistence/{repo}.py` — implementacion de repository ports
-8. `infrastructure/http/endpoints.py` — routers FastAPI, inyeccion de use cases
-9. `infrastructure/http/{adapter}.py` — adapters de servicios externos (si aplica)
+Implementar capa por capa, de dentro hacia fuera:
 
-**Orden frontend:**
-1. `domain/types.ts` — tipos TypeScript puros
-2. `domain/rules.ts` — logica de negocio pura (si aplica)
-3. `application/ports.ts` — interfaces
-4. `application/use-{feature}.ts` — hooks (ver `use-case-patterns.md`)
-5. `infrastructure/http/api-adapter.ts` — adapters HTTP
-6. `infrastructure/queries/server-queries.ts` — server-side queries
-7. `ui/{Component}.tsx` — componentes
+1. **Domain** — entidades, value objects, ports (interfaces)
+2. **Application** — services (use cases), DTOs
+3. **Infrastructure** — controllers, repositories, adapters
 
-### Paso 5: Ejecutar test -> confirmar que PASA
+```typescript
+// src/order/domain/entities/order.entity.ts
+export class Order {
+  confirm(): void {
+    if (this.status === OrderStatus.CANCELLED) {
+      throw new InvalidOrderTransitionError('Cannot confirm cancelled order')
+    }
+    this.status = OrderStatus.CONFIRMED
+  }
+}
+```
+
+### 4. Verificar que PASA
 
 ```bash
-# Backend
-cd yantar_backend && python -m pytest tests/{domain}/test_{feature}.py -v
-
-# Frontend
-cd yantar-frontend && npx vitest run {path-to-test}
+pnpm --filter backend test -- --testPathPattern=order.entity
 ```
 
-### Paso 6: Refactorizar
+### 5. Refactorizar
 
 - Extraer value objects si hay logica repetida
-- Consolidar imports
-- Verificar naming conventions
+- Renombrar para mayor claridad
+- Verificar que los tests siguen pasando
 
-### Paso 7: Ejecutar tests de fitness arquitectonica
+### 6. Tests de Fitness Arquitectonica
 
 ```bash
-# Backend — verifica que domain/application no importan frameworks
-cd yantar_backend && python -m pytest tests/test_architecture.py -v
-
-# Frontend — verifica que domain no importa Supabase/Next.js
-cd yantar-frontend && npx vitest run domains/architecture.test.ts
+pnpm --filter backend test -- --testPathPattern=architecture
 ```
 
-Si los tests de fitness fallan, hay una violacion arquitectonica que debe corregirse antes de continuar.
+Verifica:
+- domain/ y application/ no importan frameworks
+- Cross-domain solo via ports
+- Toda query filtra por companyId
 
----
+## Estructura de Tests
 
-## Fixtures y Mocks (Backend)
-
-Usar las factories de `tests/conftest.py`:
-
-```python
-from tests.conftest import make_order, make_dish
-
-# Crear entidades de test
-order = make_order(status=OrderStatus.PENDING, customer_id=customer_id)
-dish = make_dish(name="Paella", price=Decimal("12.50"))
+```
+apps/backend/
+  src/
+    order/
+      domain/
+        entities/
+          order.entity.ts
+          order.entity.spec.ts        ← Co-located test
+      application/
+        services/
+          create-order.service.ts
+          create-order.service.spec.ts ← Co-located test
+  test/
+    order/
+      order.e2e.spec.ts              ← E2E tests
+    architecture.spec.ts              ← Fitness tests
+    factories/                        ← Test factories
 ```
 
-Mock repositories son fixtures de pytest:
-- `mock_order_repo` — AsyncMock de IOrderRepository
-- `mock_menu_repo` — AsyncMock de IMenuRepository
-- `mock_dish_repo` — AsyncMock de IDishRepository
-- `mock_loyalty_checker` — AsyncMock de ILoyaltyChecker
-- `mock_restaurant_repo` — AsyncMock de IRestaurantRepository
-- `mock_allergen_repo` — AsyncMock de IAllergenRepository
+## Convencion de Tests
 
----
+- **Nombre**: `{file}.spec.ts` co-located con el archivo fuente
+- **E2E**: en carpeta `test/` raiz del backend
+- **Factories**: `test/factories/` — para crear entidades de prueba
+- **Mocks**: definir en el propio test, no en archivos separados (a menos que se reutilicen en 3+ tests)
 
-## Convenciones de Naming
+## Test de Use Case (Application Layer)
 
-| Tipo | Backend | Frontend |
-|------|---------|----------|
-| Test file | `test_{feature}.py` | `{module}.test.ts` |
-| Test class | `TestFeatureName` | `describe("FeatureName")` |
-| Test method | `test_scenario_expected_result` | `it("does something when condition")` |
-| Fixture | `mock_{dependency}` | — |
-| Use case | `{Verb}{Noun}UseCase` | `use-{feature}.ts` |
+```typescript
+// src/order/application/services/create-order.service.spec.ts
+describe('CreateOrderService', () => {
+  let service: CreateOrderService
+  let mockOrderRepo: jest.Mocked<IOrderRepository>
+  let mockNotificationService: jest.Mocked<INotificationService>
+
+  beforeEach(() => {
+    mockOrderRepo = {
+      save: jest.fn(),
+      getById: jest.fn(),
+    }
+    mockNotificationService = {
+      notifyNewOrder: jest.fn(),
+    }
+    service = new CreateOrderService(mockOrderRepo, mockNotificationService)
+  })
+
+  it('should create order and notify restaurant', async () => {
+    const request: CreateOrderRequest = {
+      companyId: 'company-1',
+      branchId: 'branch-1',
+      customerId: 'customer-1',
+      items: [{ dishId: 'dish-1', quantity: 2 }],
+      deliveryMode: DeliveryMode.DELIVERY,
+    }
+    mockOrderRepo.save.mockResolvedValue(OrderFactory.createPending())
+
+    const result = await service.execute(request)
+
+    expect(mockOrderRepo.save).toHaveBeenCalledTimes(1)
+    expect(mockNotificationService.notifyNewOrder).toHaveBeenCalledTimes(1)
+    expect(result.status).toBe(OrderStatus.PENDING)
+  })
+})
+```
+
+## Test E2E (Controller)
+
+```typescript
+// test/order/order.e2e.spec.ts
+describe('OrderController (e2e)', () => {
+  let app: INestApplication
+
+  beforeAll(async () => {
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile()
+    app = module.createNestApplication()
+    await app.init()
+  })
+
+  it('POST /orders should create order', () => {
+    return request(app.getHttpServer())
+      .post('/orders')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send({ branchId: 'branch-1', items: [...] })
+      .expect(201)
+      .expect(res => {
+        expect(res.body.status).toBe('PENDING')
+      })
+  })
+})
+```

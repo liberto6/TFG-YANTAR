@@ -2,50 +2,63 @@
 name: yantar-domain-identity
 description: >
   Documentacion viva del bounded context Identity: perfiles de usuario,
-  autenticacion JWT, roles RBAC, y autorizacion multi-tenant.
+  autenticacion JWT via Supabase, roles RBAC, y autorizacion multi-tenant.
 ---
 
 # Identity Domain
 
 ## Proposito
 
-Gestiona usuarios, autenticacion y autorizacion. Define roles (CUSTOMER, RESTAURANT_ADMIN, SUPERADMIN) y reglas RBAC para control de acceso a recursos dentro de cada restaurante (tenant).
+Gestiona usuarios, autenticacion y autorizacion. Define roles (CUSTOMER, RESTAURANT_ADMIN, SUPERADMIN) y reglas RBAC para control de acceso a recursos dentro de cada empresa (tenant). Los clientes estan aislados por empresa.
 
 ## Mapa de Archivos
 
 ```
-yantar_backend/app/identity/
-+-- domain/
-|   +-- entities.py          # User con logica RBAC multi-tenant
-|   +-- ports.py             # IUserRepository, IAuthService
-|   +-- value_objects.py     # UserRole enum
-|   +-- services.py          # AuthorizationService (raises on denial)
-|   +-- errors.py            # AuthorizationError, UserNotFoundError
-+-- application/
-|   +-- dtos.py              # UserDTO, RegisterRequest, etc.
-|   +-- get_current_user.py  # GetCurrentUserUseCase
-|   +-- register_user.py     # RegisterUserUseCase
-|   +-- update_profile.py    # UpdateProfileUseCase
-+-- infrastructure/
-    +-- http/
-    |   +-- endpoints.py       # /auth, /profile routes
-    |   +-- middleware.py      # JWT validation middleware
-    +-- persistence/
-    |   +-- sqlmodel_repo.py   # IUserRepository -> SQLModel
-    +-- supabase_auth.py       # IAuthService -> Supabase JWT
+apps/backend/src/identity/
+├── domain/
+│   ├── entities/
+│   │   └── user.entity.ts          # User con logica RBAC multi-tenant
+│   ├── ports/
+│   │   ├── user-repository.port.ts  # IUserRepository
+│   │   └── auth-service.port.ts     # IAuthService (Supabase)
+│   ├── value-objects/
+│   │   └── user-role.enum.ts        # UserRole enum
+│   ├── services/
+│   │   └── authorization.service.ts # AuthorizationService (raises on denial)
+│   └── errors/
+│       ├── authorization.error.ts
+│       └── user-not-found.error.ts
+├── application/
+│   ├── services/
+│   │   ├── get-current-user.service.ts
+│   │   ├── register-user.service.ts
+│   │   └── update-profile.service.ts
+│   └── dtos/
+│       ├── user.dto.ts
+│       ├── register.dto.ts
+│       └── update-profile.dto.ts
+├── infrastructure/
+│   ├── controllers/
+│   │   └── auth.controller.ts        # /auth, /profile routes
+│   ├── repositories/
+│   │   └── prisma-user.repository.ts  # IUserRepository → Prisma
+│   ├── adapters/
+│   │   └── supabase-auth.adapter.ts   # IAuthService → Supabase JWT
+│   └── guards/
+│       └── auth.guard.ts              # JWT validation guard
+└── identity.module.ts
 ```
 
 ## Entidades
 
 ### User
-- **Campos**: `email` (EmailStr), `role`, `display_name`, `phone`, `avatar_url`, `restaurant_id` (null para SUPERADMIN y CUSTOMER sin vinculacion), `preferences{}` (alergenos guardados, idioma, etc.)
+- **Campos**: `id`, `email`, `role` (UserRole), `displayName`, `phone`, `avatarUrl`, `companyId` (null para SUPERADMIN, para CUSTOMER = empresa donde se registro), `preferences` (alergenos guardados, etc.)
 - **Logica RBAC**:
-  - `is_customer()`, `is_restaurant_admin()`, `is_superadmin()` -> role checks
-  - `can_manage_menu(restaurant_id)` -> Admin de ese restaurante o Superadmin
-  - `can_manage_orders(restaurant_id)` -> Admin de ese restaurante o Superadmin
-  - `can_configure_restaurant(restaurant_id)` -> Admin de ese restaurante o Superadmin
-  - `can_view_customer_data(customer_id)` -> Customers ven solo lo propio, Admins ven clientes de su restaurante
-  - `belongs_to_restaurant(restaurant_id)` -> true si es admin de ese restaurante
+  - `isCustomer()`, `isRestaurantAdmin()`, `isSuperadmin()` → role checks
+  - `canManageMenu(companyId)` → Admin de esa empresa o Superadmin
+  - `canManageOrders(companyId)` → Admin de esa empresa o Superadmin
+  - `canConfigureCompany(companyId)` → Admin de esa empresa o Superadmin
+  - `belongsToCompany(companyId)` → true si es admin/customer de esa empresa
 
 ## Value Objects
 
@@ -54,51 +67,35 @@ yantar_backend/app/identity/
 ## Ports (Interfaces)
 
 ### IUserRepository
-```python
-get_by_id(user_id) -> User | None
-get_by_email(email) -> User | None
-get_by_phone(phone) -> User | None
-get_customers_by_restaurant(restaurant_id) -> list[User]
-create(user) -> User
-update(user) -> User
+```typescript
+getById(userId: string): Promise<User | null>
+getByEmail(email: string, companyId: string): Promise<User | null>
+getCustomersByCompany(companyId: string): Promise<User[]>
+create(user: User): Promise<User>
+update(user: User): Promise<User>
 ```
 
 ### IAuthService
-```python
-get_user_id_from_token(token) -> UUID | None  # JWT validation
-create_auth_user(email, password) -> UUID      # Registration
+```typescript
+getUserIdFromToken(token: string): Promise<string | null>  // JWT validation
+createAuthUser(email: string, password: string): Promise<string>  // Registration → returns userId
 ```
-
-## Servicios de Dominio
-
-### AuthorizationService
-Raises `AuthorizationError` on denial:
-- `ensure_can_manage_menu(user, restaurant_id)`
-- `ensure_can_manage_orders(user, restaurant_id)`
-- `ensure_can_configure_restaurant(user, restaurant_id)`
-- `ensure_can_view_customer_data(user, customer_id)`
-- `ensure_belongs_to_restaurant(user, restaurant_id)`
 
 ## Use Cases
 
-### GetCurrentUserUseCase
-**Dependencias**: IAuthService, IUserRepository
-**Flujo**:
-1. Validar token -> obtener user_id
-2. Cargar User desde repository
-3. Retornar UserDTO (id, email, role, display_name, phone, avatar_url, preferences)
-
-### RegisterUserUseCase
-**Dependencias**: IAuthService, IUserRepository
-**Flujo**:
-1. Verificar que email no existe
+### RegisterUserService
+1. Verificar que email no existe en esa empresa
 2. Crear auth user en Supabase
-3. Crear perfil en DB con rol CUSTOMER (por defecto)
+3. Crear perfil en BD con rol CUSTOMER (por defecto)
 4. Retornar UserDTO
 
-### UpdateProfileUseCase
-**Dependencias**: IUserRepository
-**Flujo**: Actualizar campos editables (display_name, phone, avatar_url, preferences)
+### GetCurrentUserService
+1. Validar token → obtener userId
+2. Cargar User desde repository
+3. Retornar UserDTO
+
+### UpdateProfileService
+- Actualizar campos editables: displayName, phone, avatarUrl, preferences
 
 ## Dependencias Cross-Domain
 
@@ -107,19 +104,8 @@ Raises `AuthorizationError` on denial:
 | Provee | Todos los dominios usan Identity para auth checks |
 | Consume | Supabase Auth (infraestructura externa) |
 
-## Tests
+## Notas
 
-```
-tests/identity/
-+-- test_entities.py         # RBAC logic, multi-tenant checks
-+-- test_services.py         # AuthorizationService
-+-- test_get_current_user.py # Use case
-+-- test_register_user.py    # Use case
-```
-
-## Deuda Tecnica / Notas
-
-- `preferences` es JSONB — considerar tipado fuerte para alergenos guardados
-- Un CUSTOMER puede ser cliente de multiples restaurantes — `restaurant_id` en User es para admins
-- Login social (Google, Apple) pendiente de implementar
-- Phone verification pendiente
+- CUSTOMER aislado por empresa: un cliente de "Bocagua" no es cliente de "Casa Pepe"
+- Login social (Google, Apple) pendiente
+- El registro del RESTAURANT_ADMIN se hace al crear una empresa (flujo de onboarding)
