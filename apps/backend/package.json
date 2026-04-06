@@ -59,7 +59,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@yantar/shared(.*)$": "<rootDir>/../../packages/shared/src$1"
+      "^@yantar/shared(.*)$": "<rootDir>/../../../packages/shared/src$1"
     }
   }
 }

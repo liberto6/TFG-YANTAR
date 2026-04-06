@@ -1,25 +1,24 @@
 import { UserRole } from '@yantar/shared'
+import { User } from '../../domain/entities/user.entity'
 
 export class UserDto {
   id!: string
   email!: string
-  name!: string
+  displayName!: string
+  phone!: string | null
+  avatarUrl!: string | null
   role!: UserRole
   companyId!: string | null
 
-  static fromEntity(entity: {
-    id: string
-    email: string
-    name: string
-    role: UserRole
-    companyId: string | null
-  }): UserDto {
+  static fromEntity(user: User): UserDto {
     const dto = new UserDto()
-    dto.id = entity.id
-    dto.email = entity.email
-    dto.name = entity.name
-    dto.role = entity.role
-    dto.companyId = entity.companyId
+    dto.id = user.id
+    dto.email = user.email
+    dto.displayName = user.displayName
+    dto.phone = user.phone
+    dto.avatarUrl = user.avatarUrl
+    dto.role = user.role
+    dto.companyId = user.companyId
     return dto
   }
 }
