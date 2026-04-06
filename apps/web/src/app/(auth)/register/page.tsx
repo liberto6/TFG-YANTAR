@@ -2,27 +2,53 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api-client";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import type { AuthUser } from "@/features/auth/types/auth.types";
+
+interface RegisterResponse {
+  user: AuthUser;
+}
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
+
+  const companyId = process.env.NEXT_PUBLIC_COMPANY_ID!;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert("Las contrasenas no coinciden");
+      setError("Las contrasenas no coinciden");
       return;
     }
+    setError(null);
     setIsLoading(true);
-    // TODO: integrate with auth API
-    console.log("Register attempt:", { name, email });
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      const data = await api.post<RegisterResponse>("/auth/register", {
+        email,
+        password,
+        displayName: name,
+        companyId,
+      });
+      // After register, token = userId (mock auth)
+      login(data.user.id, data.user);
+      router.push("/menu");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear la cuenta");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -34,6 +60,11 @@ export default function RegisterPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </p>
+            )}
             <div className="space-y-2">
               <label
                 htmlFor="name"

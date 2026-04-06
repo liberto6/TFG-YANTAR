@@ -46,7 +46,7 @@ async function main() {
       isMajor: true,
     },
     {
-      code: 'MILK',
+      code: 'DAIRY',
       name: 'Leche',
       description: 'Leche y sus derivados (incluida la lactosa).',
       isMajor: true,

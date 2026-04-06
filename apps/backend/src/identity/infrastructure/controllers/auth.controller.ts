@@ -4,6 +4,7 @@ import { GetCurrentUserService } from '../../application/services/get-current-us
 import { RegisterUserService } from '../../application/services/register-user.service'
 import { RegisterBusinessService } from '../../application/services/register-business.service'
 import { UpdateProfileService } from '../../application/services/update-profile.service'
+import { LoginService } from '../../application/services/login.service'
 import { UserDto } from '../../application/dtos/user.dto'
 import {
   RegisterUserRequest,
@@ -14,6 +15,7 @@ import {
   RegisterBusinessResponse,
 } from '../../application/dtos/register-business.dto'
 import { UpdateProfileRequest } from '../../application/dtos/update-profile.dto'
+import { LoginRequest, LoginResponse } from '../../application/dtos/login.dto'
 import { AuthGuard } from '../../../shared/infrastructure/guards/auth.guard'
 
 @Controller('auth')
@@ -23,6 +25,7 @@ export class AuthController {
     private readonly registerUserService: RegisterUserService,
     private readonly registerBusinessService: RegisterBusinessService,
     private readonly updateProfileService: UpdateProfileService,
+    private readonly loginService: LoginService,
   ) {}
 
   @Get('me')
@@ -31,6 +34,11 @@ export class AuthController {
     const userId = (req as any).userId as string
     const user = await this.getCurrentUser.execute(userId)
     return UserDto.fromEntity(user)
+  }
+
+  @Post('login')
+  async login(@Body() request: LoginRequest): Promise<LoginResponse> {
+    return this.loginService.execute(request)
   }
 
   @Post('register')

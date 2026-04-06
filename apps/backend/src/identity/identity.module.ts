@@ -4,6 +4,7 @@ import { GetCurrentUserService } from './application/services/get-current-user.s
 import { RegisterUserService } from './application/services/register-user.service'
 import { RegisterBusinessService } from './application/services/register-business.service'
 import { UpdateProfileService } from './application/services/update-profile.service'
+import { LoginService } from './application/services/login.service'
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository'
 import { MockAuthAdapter } from './infrastructure/adapters/mock-auth.adapter'
 import { CompanyModule } from '../company/company.module'
@@ -16,6 +17,7 @@ import { CompanyModule } from '../company/company.module'
     RegisterUserService,
     RegisterBusinessService,
     UpdateProfileService,
+    LoginService,
     {
       provide: 'IUserRepository',
       useClass: PrismaUserRepository,

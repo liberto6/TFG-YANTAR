@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { QueryProvider } from "@/lib/query-provider";
+import { AuthProvider } from "@/features/auth/context/auth-context";
+import { CartProvider } from "@/features/cart/context/cart-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="min-h-screen antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <CartProvider>{children}</CartProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
