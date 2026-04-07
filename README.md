@@ -256,11 +256,26 @@ PENDING/ACCEPTED → CANCELLED
 
 ## Proximos Sprints
 
-### Sprint 8 — Customer: Loyalty visible + Historial + Perfil (pendiente)
-- `PointsBadge` en el header con puntos actuales del cliente
-- `/orders` historial de pedidos del cliente
-- `RewardsList` y `RedeemAtCheckout` — ver y canjear recompensas en checkout
-- `/profile` — datos del perfil y logout
+### Sprint 8 — Customer: Loyalty visible + Historial + Perfil ✅
+
+**Feature loyalty** (`apps/web/src/features/loyalty/`):
+- `useLoyaltyBalance`, `useLoyaltyRewards`, `useLoyaltyHistory`, `useRedeemPoints` — hooks con React Query
+- `PointsBadge` — puntos actuales en el header del restaurante, link al perfil (solo visible si autenticado)
+- `RewardsList` — lista de recompensas canjeables/bloqueadas según balance actual
+- `RedeemAtCheckout` — panel expandible en checkout para seleccionar recompensa, calcula descuento en tiempo real
+
+**Páginas customer nuevas:**
+- `/orders` — historial de pedidos con estado (badge color), items, fecha y total; link al tracking
+- `/profile` — avatar, tarjeta de puntos con totales acumulados/canjeados, recompensas disponibles, últimos 5 movimientos de puntos, botón logout
+
+**Checkout actualizado:**
+- Integra `RedeemAtCheckout` antes del resumen
+- Descuento aplicado en desglose (subtotal + envio − descuento = total)
+- `rewardId` enviado al backend al confirmar pedido
+
+**Layout customer:** añadidos links a `/orders` y `PointsBadge` en barra de navegación
+
+**Cleanup:** eliminados stubs `(operativo)/orders/page.tsx` y `(operativo)/layout.tsx`
 
 ---
 
