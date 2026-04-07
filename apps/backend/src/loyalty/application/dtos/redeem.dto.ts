@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUUID, IsNumber, IsPositive } from 'class-validator'
+import { IsString, IsNotEmpty, IsUUID, IsNumber, IsPositive, IsOptional } from 'class-validator'
 
 export class RedeemPointsRequest {
   @IsNumber()
@@ -28,6 +28,3 @@ export class AwardPointsRequest {
   @IsUUID()
   orderId!: string
 }
-
-// Need this import for IsOptional
-import { IsOptional } from 'class-validator'

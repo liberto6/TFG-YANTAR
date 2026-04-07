@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, RewardType } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -194,7 +194,7 @@ async function seedDemoRestaurant() {
         companyId: COMPANY_ID,
         status: 'ACTIVE',
         sortOrder: 0,
-        allergens: {
+        allergenCodes: {
           create: allergenCodes.map((code) => ({ allergenCode: code })),
         },
       },
@@ -265,21 +265,21 @@ async function seedDemoRestaurant() {
     },
   })
 
-  const rewards = [
+  const rewards: { id: string; name: string; description: string; type: RewardType; pointsCost: number; value: string }[] = [
     {
       id: 'reward-1', name: '5% de descuento',
       description: 'Descuento del 5% en tu pedido',
-      type: 'DISCOUNT_PERCENT', pointsCost: 100, value: '5',
+      type: RewardType.DISCOUNT_PERCENT, pointsCost: 100, value: '5',
     },
     {
       id: 'reward-2', name: '2€ de descuento',
       description: 'Descuento directo de 2€',
-      type: 'DISCOUNT_FIXED', pointsCost: 200, value: '2',
+      type: RewardType.DISCOUNT_FIXED, pointsCost: 200, value: '2',
     },
     {
       id: 'reward-3', name: '10% de descuento',
       description: 'Descuento del 10% en tu pedido',
-      type: 'DISCOUNT_PERCENT', pointsCost: 300, value: '10',
+      type: RewardType.DISCOUNT_PERCENT, pointsCost: 300, value: '10',
     },
   ]
 

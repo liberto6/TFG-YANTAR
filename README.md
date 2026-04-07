@@ -301,52 +301,62 @@ PENDING/ACCEPTED → CANCELLED
 ### Requisitos
 
 - Node.js >= 20
-- pnpm >= 9
-- Docker (para PostgreSQL)
+- pnpm >= 10.13.1 (`npm install -g pnpm@10.13.1`)
+- Docker Desktop (para PostgreSQL)
 
-### Instalacion
+### Arrancar la demo (paso a paso)
 
 ```bash
-# Instalar dependencias
+# 1. Instalar dependencias del monorepo
 pnpm install
 
-# Compilar paquete shared (necesario para TypeScript)
-cd packages/shared && npx tsc && cd ../..
-
-# Levantar PostgreSQL
+# 2. Levantar PostgreSQL
 docker compose up -d
 
-# Migrar base de datos y ejecutar seed
+# 3. Aplicar migraciones
 cd apps/backend
 npx prisma migrate deploy
+
+# 4. Cargar datos de demo (Pizzeria Napoli)
 npx prisma db seed
+
+# 5. Compilar el backend
+npx tsc
+
+# 6. Arrancar backend y frontend
+node dist/main.js          # http://localhost:3001
+# En otra terminal:
+cd ../web && npx next dev   # http://localhost:3000
 ```
 
 ### Variables de entorno
 
+Los ficheros `.env` ya estan incluidos con los valores correctos para la demo local.
+
 **Backend** (`apps/backend/.env`):
 ```env
-DATABASE_URL=postgresql://yantar:yantar@localhost:5432/yantar
+DATABASE_URL="postgresql://yantar:yantar_dev_password@localhost:5432/yantar_dev"
+PORT=3001
+CORS_ORIGIN="http://localhost:3000"
 ```
 
 **Frontend** (`apps/web/.env.local`):
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_COMPANY_ID=<uuid-de-la-empresa>
-NEXT_PUBLIC_COMPANY_SLUG=nombre-restaurante
-NEXT_PUBLIC_BRANCH_ID=<uuid-de-la-sede>
+NEXT_PUBLIC_COMPANY_ID=a1b2c3d4-0000-0000-0000-000000000001
+NEXT_PUBLIC_COMPANY_SLUG=napoli
+NEXT_PUBLIC_BRANCH_ID=a1b2c3d4-0000-0000-0000-000000000002
 ```
 
-### Arrancar en desarrollo
+### Datos de demo
 
-```bash
-# Desde la raiz del monorepo
-pnpm dev
+El seed carga la **Pizzeria Napoli** con:
+- 13 platos en 5 categorias (Pizzas, Pasta, Entrantes, Bebidas, Postres)
+- Variantes de tamaño y modificadores de extras para las pizzas
+- Programa de fidelizacion con 3 recompensas
+- 14 alergenos EU segun Reglamento UE 1169/2011
 
-# O por separado:
-pnpm --filter @yantar/backend dev   # http://localhost:3001
-pnpm --filter @yantar/web dev       # http://localhost:3000
-```
+**Admin de prueba:** `admin@napoli.es` / `admin123`
 
 ### Tests
 
@@ -358,16 +368,7 @@ npx jest --passWithNoTests
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
 
-**Cobertura actual: 259 tests, 40 suites — todos en verde.**
-
-### Migracion de base de datos (Sprint 5)
-
-El Sprint 5 añade el modelo `LoyaltyConfig`. Ejecutar tras actualizar:
-
-```bash
-cd apps/backend
-npx prisma migrate dev --name add-loyalty-config
-```
+**Cobertura actual: 278 tests, 42 suites — todos en verde.**
 
 ---
 
