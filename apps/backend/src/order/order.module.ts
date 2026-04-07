@@ -13,14 +13,16 @@ import { GetOrderService } from './application/services/get-order.service'
 import { GetOrderHistoryService } from './application/services/get-order-history.service'
 import { GetActiveOrdersService } from './application/services/get-active-orders.service'
 import { PrismaOrderRepository } from './infrastructure/repositories/prisma-order.repository'
-import { NullNotificationAdapter } from './infrastructure/adapters/null-notification.adapter'
+import { WsNotificationAdapter } from './infrastructure/adapters/ws-notification.adapter'
 import { MenuDishCheckerAdapter } from './infrastructure/adapters/menu-dish-checker.adapter'
+import { OrderEventsGateway } from './infrastructure/gateways/order-events.gateway'
 import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
 
 @Module({
   imports: [forwardRef(() => IdentityModule), MenuModule, forwardRef(() => LoyaltyModule)],
   controllers: [OrderController, AdminOrderController],
   providers: [
+    OrderEventsGateway,
     CreateOrderService,
     AcceptOrderService,
     RejectOrderService,
@@ -35,7 +37,7 @@ import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
     },
     {
       provide: 'INotificationService',
-      useClass: NullNotificationAdapter,
+      useClass: WsNotificationAdapter,
     },
     {
       provide: 'IDishCheckerPort',
