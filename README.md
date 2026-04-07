@@ -279,6 +279,23 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 9 — Cobertura de tests completa ✅
+
+**Tests añadidos** (+19 tests, 42 suites, 278 total):
+
+**Loyalty application layer:**
+- `GetBalanceService`: retorna DTO con balance correcto, cuenta nueva con balance 0
+- `GetRewardsService`: mapea rewards a DTOs, lista vacía, `isAvailable=false` cuando stock=0
+- `GetPointsHistoryService`: retorna transacciones, array vacío si no existe cuenta, respeta limit/offset
+
+**Order application layer:**
+- `GetOrderService`: retorna DTO, lanza `OrderNotFoundError`
+- `GetOrderHistoryService`: retorna lista, array vacío, reenvía limit/offset al repositorio
+- `GetActiveOrdersService`: retorna pedidos activos por sede, array vacío
+- `CancelOrderService`: cancela pedidos PENDING y ACCEPTED, lanza error si no existe, no notifica en ese caso
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
