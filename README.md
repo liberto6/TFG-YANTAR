@@ -208,12 +208,31 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
-## Proximos Sprints
+---
 
-### Sprint 6 — WebSocket + Vista Operativa (pendiente)
-- `OrderEventsGateway` — eventos en tiempo real para vista operativa
-- Vista operativa (tablet): pedidos entrantes, cambio de estado desde cocina
-- Sustituir polling del cliente por WebSocket
+### Sprint 6 — WebSocket + Vista Operativa ✅
+
+**Backend — WebSocket** (`apps/backend/src/order/infrastructure/gateways/`)
+- `OrderEventsGateway` — gateway Socket.io en namespace `/orders`
+- Rooms por `branch:{branchId}` (vista operativa) y `order:{orderId}` (customer tracking)
+- Eventos emitidos: `order:new`, `order:status-changed`
+- Suscripciones cliente: `branch:subscribe`, `order:subscribe`
+- `WsNotificationAdapter` — implementa `INotificationService`, sustituye `NullNotificationAdapter`
+
+**Frontend operativo** (`apps/web/src/app/(operativo)/operativo/`)
+- Vista kanban con columnas: Pendiente / Aceptado / Preparando / Listo
+- `useBranchOrderEvents` — hook WebSocket que actualiza React Query cache en tiempo real
+- `useActiveOrders` — carga inicial HTTP + actualizaciones WS sin polling
+- `OrderKanbanCard` — tarjeta con acciones por estado: aceptar (con tiempo estimado), rechazar, preparar, listo, entregado
+- Layout con guard de rol `RESTAURANT_ADMIN`
+
+**Frontend customer (mejora)**
+- `useOrderStatus` — WebSocket como canal principal + polling cada 10s como fallback
+- `useOrderSocketSubscription` — suscribe al room `order:{orderId}` y actualiza cache directamente
+
+---
+
+## Proximos Sprints
 
 ### Sprint 7 — Branding + Sedes + Settings (pendiente)
 - Panel admin: gestion de sedes, horarios operativos, zonas de reparto
