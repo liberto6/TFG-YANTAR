@@ -177,16 +177,47 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
-## Proximos Sprints
+### Sprint 5 — Loyalty + Panel Admin ✅
 
-### Sprint 5 — Loyalty + Panel Admin (pendiente)
-- Puntos por pedido, canje de recompensas en checkout
-- Panel admin: gestion de carta, sedes, branding, historial de pedidos
+**Loyalty domain** (`apps/backend/src/loyalty/`)
+- Entidad `LoyaltyAccount` con `award(points)`, `redeem(points)`, `canRedeem(points)`
+- Entidad `Reward` con `isAvailable()` y `consume()` (gestiona stock y fechas de validez)
+- Entidad `PointsTransaction` — historial inmutable de movimientos (EARNED / REDEEMED)
+- `PointsCalculationService` — funciones puras: calculo de puntos por euro y valor del descuento
+- Errores de dominio: `InsufficientPointsError` (422), `RewardNotAvailableError` (422)
+- `LoyaltyConfig` — modelo independiente por empresa (puntos por euro, valor del punto, minimo de canje)
+- **Endpoints customer:** `GET /loyalty/balance`, `GET /loyalty/rewards`, `POST /loyalty/redeem`, `GET /loyalty/history`
+- **Endpoints admin:** `GET/PUT /admin/loyalty/config`, `GET/POST/PUT/DELETE /admin/loyalty/rewards`
+
+**Cross-domain Loyalty ↔ Order:**
+- `ILoyaltyChecker` port definido en Order domain, implementado por `LoyaltyCheckerAdapter` en Loyalty
+- `UpdateOrderStatusService` otorga puntos automaticamente al marcar pedido como DELIVERED (no critico — fallo en loyalty no afecta al pedido)
+- Dependencia circular `OrderModule ↔ LoyaltyModule` resuelta con `forwardRef()`
+
+**Panel Admin** (`apps/web/src/app/(admin)/admin/`)
+- Layout con sidebar de navegacion y guard de rol `RESTAURANT_ADMIN`
+- Rutas bajo `/admin/*` para evitar conflicto con rutas del customer (`/menu`, `/orders`)
+- `/admin/dashboard` — KPIs del dia + pedidos activos con polling cada 10 segundos
+- `/admin/menu` — lista de platos con toggle de disponibilidad, edicion y borrado
+- `/admin/menu/new` — formulario de creacion de plato (nombre, precio, categoria, alergenos)
+- `/admin/menu/[dishId]` — formulario de edicion de plato
+- `/admin/menu/categories` — CRUD de categorias inline
+- `/admin/orders` — gestion de pedidos con filtro activos/completados/todos y botones de accion
+- `/admin/loyalty` — configuracion del programa de fidelizacion
+- `/admin/loyalty/rewards` — CRUD de recompensas con formulario inline
+
+---
+
+## Proximos Sprints
 
 ### Sprint 6 — WebSocket + Vista Operativa (pendiente)
 - `OrderEventsGateway` — eventos en tiempo real para vista operativa
 - Vista operativa (tablet): pedidos entrantes, cambio de estado desde cocina
 - Sustituir polling del cliente por WebSocket
+
+### Sprint 7 — Branding + Sedes + Settings (pendiente)
+- Panel admin: gestion de sedes, horarios operativos, zonas de reparto
+- Configuracion de branding (logo, colores, tipografia) con preview en tiempo real
 
 ---
 
@@ -246,11 +277,22 @@ pnpm --filter @yantar/web dev       # http://localhost:3000
 
 ```bash
 cd apps/backend
-node_modules/.bin/jest --passWithNoTests
+npx jest --passWithNoTests
 ```
 
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
+
+**Cobertura actual: 259 tests, 40 suites — todos en verde.**
+
+### Migracion de base de datos (Sprint 5)
+
+El Sprint 5 añade el modelo `LoyaltyConfig`. Ejecutar tras actualizar:
+
+```bash
+cd apps/backend
+npx prisma migrate dev --name add-loyalty-config
+```
 
 ---
 
