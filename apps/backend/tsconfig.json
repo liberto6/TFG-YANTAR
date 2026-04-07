@@ -20,7 +20,8 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@yantar/shared": ["../../packages/shared/dist"],
-      "@yantar/shared/*": ["../../packages/shared/dist/*"]
+      "@yantar/shared/*": ["../../packages/shared/dist/*"],
+      "socket.io": ["../../node_modules/.pnpm/socket.io@4.8.1/node_modules/socket.io/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*"],
