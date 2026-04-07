@@ -232,11 +232,35 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+---
+
+### Sprint 7 — Admin: Sedes + Settings + Branding ✅
+
+**Backend:**
+- `GetCompanyConfigService`: nuevo método `executeById(companyId)` para acceso admin sin slug
+- `CompanyAdminController`: nuevo endpoint `GET /admin/company/config`
+
+**Frontend admin:**
+- `/admin/branches` — lista de sedes con modalidades de servicio, edición y borrado
+- `/admin/branches/new` — formulario de creación (nombre, dirección, teléfono, email, modos de servicio)
+- `/admin/branches/[branchId]` — edición de sede + `HoursEditor` con horarios por día de la semana
+- `/admin/settings` — hub de configuración con acceso rápido a branding y sedes
+- `/admin/settings/branding` — editor completo: appName, logo, welcomeMessage, paleta de 7 colores con preview en tiempo real
+
+**Hooks añadidos** (`features/admin-company/`):
+- `useAdminBranches`, `useCreateBranch`, `useUpdateBranch`, `useDeleteBranch`
+- `useOperatingHours`, `useSetOperatingHours`
+- `useCompanyConfig`, `useUpdateBranding`
+
+---
+
 ## Proximos Sprints
 
-### Sprint 7 — Branding + Sedes + Settings (pendiente)
-- Panel admin: gestion de sedes, horarios operativos, zonas de reparto
-- Configuracion de branding (logo, colores, tipografia) con preview en tiempo real
+### Sprint 8 — Customer: Loyalty visible + Historial + Perfil (pendiente)
+- `PointsBadge` en el header con puntos actuales del cliente
+- `/orders` historial de pedidos del cliente
+- `RewardsList` y `RedeemAtCheckout` — ver y canjear recompensas en checkout
+- `/profile` — datos del perfil y logout
 
 ---
 
