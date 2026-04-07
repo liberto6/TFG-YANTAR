@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CartBadge } from "@/features/cart/components/CartBadge";
 import { CartDrawer } from "@/features/cart/components/CartDrawer";
+import { PointsBadge } from "@/features/loyalty/components/PointsBadge";
 
 export default function CustomerLayout({ children }: { children: ReactNode }) {
   return (
@@ -14,13 +15,20 @@ export default function CustomerLayout({ children }: { children: ReactNode }) {
           <Link href="/menu" className="text-lg font-bold tracking-tight">
             {process.env.NEXT_PUBLIC_COMPANY_SLUG ?? "Restaurante"}
           </Link>
-          <nav className="flex items-center gap-1 text-sm">
+          <nav className="flex items-center gap-2 text-sm">
             <Link
               href="/menu"
-              className="rounded-md px-3 py-1.5 transition-colors hover:bg-white/10"
+              className="rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/10"
             >
               Carta
             </Link>
+            <Link
+              href="/orders"
+              className="rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/10"
+            >
+              Pedidos
+            </Link>
+            <PointsBadge />
             <CartBadge />
           </nav>
         </div>
