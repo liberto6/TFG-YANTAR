@@ -10,12 +10,29 @@ export class GetCompanyConfigService {
     private readonly companyRepository: ICompanyRepository,
   ) {}
 
+  async executeById(companyId: string): Promise<CompanyConfigResponse> {
+    const company = await this.companyRepository.findById(companyId)
+    if (!company) {
+      throw new CompanyNotFoundError(companyId)
+    }
+    return this.toResponse(company)
+  }
+
   async execute(slug: string): Promise<CompanyConfigResponse> {
     const company = await this.companyRepository.findBySlug(slug)
     if (!company) {
       throw new CompanyNotFoundError(slug)
     }
+    return this.toResponse(company)
+  }
 
+  private toResponse(company: {
+    name: string; slug: string; description: string | null; logoUrl: string | null;
+    faviconUrl: string | null; fontFamily: string | null; colorPrimary: string | null;
+    colorSecondary: string | null; colorAccent: string | null; colorBackground: string | null;
+    colorSurface: string | null; colorText: string | null; colorTextMuted: string | null;
+    welcomeMessage: string | null; appName: string | null;
+  }): CompanyConfigResponse {
     return CompanyConfigResponse.from({
       name: company.name,
       slug: company.slug,
