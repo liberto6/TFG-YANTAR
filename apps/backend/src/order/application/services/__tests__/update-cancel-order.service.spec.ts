@@ -17,7 +17,7 @@ describe('UpdateOrderStatusService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    service = new UpdateOrderStatusService(mockOrderRepository, mockNotificationService)
+    service = new UpdateOrderStatusService(mockOrderRepository, mockNotificationService, null)
   })
 
   it('startPreparing: ACCEPTED → PREPARING', async () => {

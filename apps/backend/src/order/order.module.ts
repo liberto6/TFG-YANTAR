@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common'
 import { IdentityModule } from '../identity/identity.module'
 import { MenuModule } from '../menu/menu.module'
+import { LoyaltyModule } from '../loyalty/loyalty.module'
 import { OrderController } from './infrastructure/controllers/order.controller'
 import { AdminOrderController } from './infrastructure/controllers/admin-order.controller'
 import { CreateOrderService } from './application/services/create-order.service'
@@ -17,7 +18,7 @@ import { MenuDishCheckerAdapter } from './infrastructure/adapters/menu-dish-chec
 import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
 
 @Module({
-  imports: [forwardRef(() => IdentityModule), MenuModule],
+  imports: [forwardRef(() => IdentityModule), MenuModule, forwardRef(() => LoyaltyModule)],
   controllers: [OrderController, AdminOrderController],
   providers: [
     CreateOrderService,

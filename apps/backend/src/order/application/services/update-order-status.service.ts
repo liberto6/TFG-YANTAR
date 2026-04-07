@@ -1,6 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { IOrderRepository } from '../../domain/ports/order-repository.port'
 import { INotificationService } from '../../domain/ports/notification-service.port'
+import { ILoyaltyChecker } from '../../domain/ports/loyalty-checker.port'
 import { OrderNotFoundError } from '../../domain/errors/order-not-found.error'
 import { InvalidOrderTransitionError } from '../../domain/errors/invalid-order-transition.error'
 import { OrderResponse } from '../dtos/order.dto'
@@ -14,6 +15,9 @@ export class UpdateOrderStatusService {
     private readonly orderRepository: IOrderRepository,
     @Inject('INotificationService')
     private readonly notificationService: INotificationService,
+    @Optional()
+    @Inject('ILoyaltyChecker')
+    private readonly loyaltyChecker: ILoyaltyChecker | null,
   ) {}
 
   async execute(
@@ -32,6 +36,20 @@ export class UpdateOrderStatusService {
 
     const saved = await this.orderRepository.save(updated)
     await this.notificationService.notifyOrderStatusChange(saved)
+
+    // Award loyalty points when order is delivered
+    if (action === 'markDelivered' && this.loyaltyChecker) {
+      try {
+        await this.loyaltyChecker.awardPoints(
+          saved.customerId,
+          saved.companyId,
+          saved.total,
+          saved.id,
+        )
+      } catch {
+        // Loyalty errors are non-critical — do not fail the status update
+      }
+    }
 
     return OrderResponse.fromEntity(saved)
   }
