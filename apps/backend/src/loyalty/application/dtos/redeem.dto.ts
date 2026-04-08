@@ -5,7 +5,7 @@ export class RedeemPointsRequest {
   @IsPositive()
   points!: number
 
-  @IsUUID()
+  @IsUUID('all')
   @IsOptional()
   rewardId?: string
 
@@ -15,16 +15,16 @@ export class RedeemPointsRequest {
 }
 
 export class AwardPointsRequest {
-  @IsUUID()
+  @IsUUID('all')
   customerId!: string
 
-  @IsUUID()
+  @IsUUID('all')
   companyId!: string
 
   @IsNumber()
   @IsPositive()
   orderTotal!: number
 
-  @IsUUID()
+  @IsUUID('all')
   orderId!: string
 }

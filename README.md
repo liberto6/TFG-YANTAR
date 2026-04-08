@@ -8,11 +8,11 @@ Plataforma SaaS white-label de delivery para restaurantes. Cada empresa obtiene 
 |------------|-----------|
 | Backend | NestJS (TypeScript) + Prisma + PostgreSQL |
 | Frontend | Next.js 14 (App Router, TypeScript) |
-| Auth | Mock JWT (UUID como token, Supabase-ready) |
+| Auth | Mock JWT + bcrypt password hashing (Supabase-ready) |
 | Tiempo real | WebSockets (NestJS Gateway — Sprint 6) |
 | UI | Tailwind CSS + componentes propios |
 | Monorepo | pnpm workspaces + Turborepo |
-| Testing | Jest (TDD en domain + application layers) |
+| Testing | Jest (backend, TDD) + Vitest (frontend, unit tests) |
 
 ## Funcionalidades principales
 
@@ -296,6 +296,40 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 10 — Auth con bcrypt + Branding dinámico en SSR ✅
+
+**Auth — contraseñas reales** (`apps/backend/src/identity/`):
+- `IPasswordService` — nuevo port en domain layer: `hash(plaintext)` / `verify(plaintext, hash)`
+- `BcryptPasswordAdapter` — implementación con bcrypt (10 salt rounds), inyectado via DI (`'IPasswordService'`)
+- `LoginService` — verifica contraseña contra hash almacenado; si `passwordHash === null` (legacy), permite acceso para compatibilidad
+- `RegisterUserService` — hashea la contraseña con `Promise.all([createAuthUser, hash])` antes de persistir
+- `InvalidCredentialsError` — nuevo error de dominio (`code: 'INVALID_CREDENTIALS'`), mapea a HTTP 401 en `DomainExceptionFilter`
+- Migración Prisma: columna `password_hash VARCHAR` en tabla `users`
+- Seed actualizado: admin `admin@napoli.es` con contraseña `admin123` hasheada con bcrypt
+
+**Frontend — branding dinámico sin FOUC** (`apps/web/src/`):
+- `lib/color-utils.ts` — utilidad pura `hexToHsl(hex)` convierte `#rrggbb` → `"H S% L%"` (formato variables CSS de Tailwind); `buildBrandingCssVars(config)` mapea los 7 colores del branding al bloque `:root { --primary: ... }`
+- `app/(customer)/layout.tsx` convertido a **async Server Component**: llama `GET /companies/:slug/config` en render time con `next: { revalidate: 300 }`, inyecta `<style>:root { ... }</style>` antes del HTML — el cliente recibe el tema correcto en el primer byte, sin flash
+- `app/(auth)/login/page.tsx` — redirect post-login basado en rol: `RESTAURANT_ADMIN` → `/admin/dashboard`, `CUSTOMER` → `/menu`
+- `app/(admin)/admin/page.tsx` — nueva página raíz `/admin` que hace `redirect('/admin/dashboard')` para evitar 404 al navegar directamente
+
+**Tests frontend** (`apps/web/`):
+- `vitest` añadido como test runner para el frontend
+- `lib/color-utils.test.ts` — 16 tests unitarios: blanco/negro/rojo/verde/azul, shorthand `#rgb`, colores acromaticos, colores reales de marca, `buildBrandingCssVars` con campos nulos
+
+**Fix validación UUID** (`apps/backend/src/`):
+- DTOs que recibían `companyId` de datos de seed (UUID versión 0) fallaban con `@IsUUID()` (que valida solo v4 por defecto)
+- `LoginDto.companyId` cambiado a `@IsString()` (el formato se verifica en el modelo de dominio)
+- `RedeemDto.companyId` cambiado a `@IsUUID('all')` para aceptar cualquier versión
+
+**Tests** (+11 tests respecto Sprint 9):
+- `login.service.spec.ts` — 5 tests: usuario no encontrado, contraseña incorrecta, login correcto, verificación contra hash, compatibilidad con passwordHash nulo
+- `user.entity.spec.ts` — 4 tests nuevos: passwordHash nulo por defecto en createCustomer/createAdmin, almacenado si se pasa, preservado en updateProfile
+
+**Cobertura total: 289 tests, 43 suites — todos en verde.**
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
@@ -368,7 +402,15 @@ npx jest --passWithNoTests
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
 
-**Cobertura actual: 278 tests, 42 suites — todos en verde.**
+**Cobertura actual: 289 tests, 43 suites — todos en verde.**
+
+Para tests de frontend (Vitest):
+
+```bash
+cd apps/web
+pnpm test          # ejecuta una vez
+pnpm test:watch    # modo watch
+```
 
 ---
 

@@ -9,6 +9,7 @@ interface UserProps {
   companyId: string | null
   role: UserRole
   preferences: Record<string, unknown>
+  passwordHash: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -22,6 +23,7 @@ export class User {
   readonly companyId: string | null
   readonly role: UserRole
   readonly preferences: Record<string, unknown>
+  readonly passwordHash: string | null
   readonly createdAt: Date
   readonly updatedAt: Date
 
@@ -34,6 +36,7 @@ export class User {
     this.companyId = props.companyId
     this.role = props.role
     this.preferences = props.preferences
+    this.passwordHash = props.passwordHash
     this.createdAt = props.createdAt
     this.updatedAt = props.updatedAt
   }
@@ -44,6 +47,7 @@ export class User {
     displayName: string
     phone?: string
     companyId: string
+    passwordHash?: string | null
   }): User {
     const now = new Date()
     return new User({
@@ -55,6 +59,7 @@ export class User {
       companyId: props.companyId,
       role: UserRole.CUSTOMER,
       preferences: {},
+      passwordHash: props.passwordHash ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -66,6 +71,7 @@ export class User {
     displayName: string
     phone?: string
     companyId: string
+    passwordHash?: string | null
   }): User {
     const now = new Date()
     return new User({
@@ -77,6 +83,7 @@ export class User {
       companyId: props.companyId,
       role: UserRole.RESTAURANT_ADMIN,
       preferences: {},
+      passwordHash: props.passwordHash ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -123,6 +130,7 @@ export class User {
       companyId: this.companyId,
       role: this.role,
       preferences: changes.preferences ?? this.preferences,
+      passwordHash: this.passwordHash,
       createdAt: this.createdAt,
       updatedAt: new Date(),
     })

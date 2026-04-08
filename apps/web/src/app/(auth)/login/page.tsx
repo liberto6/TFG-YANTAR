@@ -36,7 +36,8 @@ export default function LoginPage() {
         companyId,
       });
       login(data.token, data.user);
-      router.push("/menu");
+      const destination = data.user.role === "RESTAURANT_ADMIN" ? "/admin/dashboard" : "/menu";
+      router.push(destination);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesion");
     } finally {

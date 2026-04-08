@@ -10,16 +10,17 @@ datasource db {
 // ==================== IDENTITY ====================
 
 model User {
-  id          String   @id @default(uuid())
-  email       String
-  role        UserRole @default(CUSTOMER)
-  displayName String?  @map("display_name")
-  phone       String?
-  avatarUrl   String?  @map("avatar_url")
-  companyId   String?  @map("company_id")
-  preferences Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String
+  role         UserRole @default(CUSTOMER)
+  displayName  String?  @map("display_name")
+  phone        String?
+  avatarUrl    String?  @map("avatar_url")
+  companyId    String?  @map("company_id")
+  preferences  Json     @default("{}")
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   company         Company?          @relation(fields: [companyId], references: [id])
   orders          Order[]

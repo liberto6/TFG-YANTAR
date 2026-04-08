@@ -63,6 +63,7 @@ describe('User Entity', () => {
         avatarUrl: null,
         role: UserRole.SUPERADMIN,
         preferences: {},
+        passwordHash: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -90,6 +91,7 @@ describe('User Entity', () => {
         avatarUrl: null,
         role: UserRole.SUPERADMIN,
         preferences: {},
+        passwordHash: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -178,6 +180,7 @@ describe('User Entity', () => {
         companyId: 'company-5',
         role: UserRole.RESTAURANT_ADMIN,
         preferences: { lang: 'es' },
+        passwordHash: '$2b$10$abc',
         createdAt,
         updatedAt,
       })
@@ -190,8 +193,32 @@ describe('User Entity', () => {
       expect(user.companyId).toBe('company-5')
       expect(user.role).toBe(UserRole.RESTAURANT_ADMIN)
       expect(user.preferences).toEqual({ lang: 'es' })
+      expect(user.passwordHash).toBe('$2b$10$abc')
       expect(user.createdAt).toBe(createdAt)
       expect(user.updatedAt).toBe(updatedAt)
+    })
+  })
+
+  describe('passwordHash', () => {
+    it('es null por defecto al crear customer', () => {
+      const user = User.createCustomer(baseProps)
+      expect(user.passwordHash).toBeNull()
+    })
+
+    it('es null por defecto al crear admin', () => {
+      const user = User.createAdmin(baseProps)
+      expect(user.passwordHash).toBeNull()
+    })
+
+    it('se almacena si se pasa en createCustomer', () => {
+      const user = User.createCustomer({ ...baseProps, passwordHash: '$2b$10$hash' })
+      expect(user.passwordHash).toBe('$2b$10$hash')
+    })
+
+    it('se preserva al llamar updateProfile', () => {
+      const user = User.createCustomer({ ...baseProps, passwordHash: '$2b$10$hash' })
+      const updated = user.updateProfile({ displayName: 'New Name' })
+      expect(updated.passwordHash).toBe('$2b$10$hash')
     })
   })
 })

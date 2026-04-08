@@ -18,7 +18,7 @@ export class RegisterUserRequest {
   @IsString()
   phone?: string
 
-  @IsUUID()
+  @IsUUID('all')
   companyId!: string
 }
 

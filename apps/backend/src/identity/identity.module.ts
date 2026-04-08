@@ -7,6 +7,7 @@ import { UpdateProfileService } from './application/services/update-profile.serv
 import { LoginService } from './application/services/login.service'
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository'
 import { MockAuthAdapter } from './infrastructure/adapters/mock-auth.adapter'
+import { BcryptPasswordAdapter } from './infrastructure/adapters/bcrypt-password.adapter'
 import { CompanyModule } from '../company/company.module'
 
 @Module({
@@ -25,6 +26,10 @@ import { CompanyModule } from '../company/company.module'
     {
       provide: 'IAuthService',
       useClass: MockAuthAdapter,
+    },
+    {
+      provide: 'IPasswordService',
+      useClass: BcryptPasswordAdapter,
     },
   ],
   exports: [GetCurrentUserService, 'IUserRepository', 'IAuthService'],

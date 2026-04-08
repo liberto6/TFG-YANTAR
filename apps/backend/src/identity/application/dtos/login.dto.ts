@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsUUID } from 'class-validator'
+import { IsEmail, IsString } from 'class-validator'
 import { UserDto } from './user.dto'
 
 export class LoginRequest {
@@ -8,7 +8,7 @@ export class LoginRequest {
   @IsString()
   password!: string
 
-  @IsUUID()
+  @IsString()
   companyId!: string
 }
 

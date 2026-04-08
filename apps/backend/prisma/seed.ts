@@ -1,4 +1,5 @@
 import { PrismaClient, RewardType } from '@prisma/client'
+import * as bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
 
@@ -90,15 +91,17 @@ async function seedDemoRestaurant() {
   }
 
   // ── Admin user ────────────────────────────────────────────────────────────
+  const adminPasswordHash = await bcrypt.hash('admin123', 10)
   await prisma.user.upsert({
     where: { id: ADMIN_ID },
-    update: {},
+    update: { passwordHash: adminPasswordHash },
     create: {
       id: ADMIN_ID,
       email: 'admin@napoli.es',
       displayName: 'Admin Nápoli',
       role: 'RESTAURANT_ADMIN',
       companyId: COMPANY_ID,
+      passwordHash: adminPasswordHash,
     },
   })
 
