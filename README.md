@@ -506,6 +506,83 @@ NEXT_PUBLIC_COMPANY_SLUG=mi-restaurante
 
 ---
 
+### Sprint 16 — VariantGroupEditor y ModifierGroupEditor (TDD) ✅
+
+**Objetivo:** Añadir a `DishForm` la capacidad de gestionar variantes y modificadores directamente, sin depender de flujos separados. Ciclo TDD estricto en la capa de componentes React.
+
+**Componentes implementados:**
+
+- `VariantGroupEditor` — Gestiona grupos de variantes (ej: "Tamaño"). Cada grupo tiene nombre y lista de opciones con precio. Añadir/eliminar grupos y opciones inline.
+- `ModifierGroupEditor` — Gestiona grupos de modificadores (ej: "Extras"). Añade `selectionType` (SINGLE/MULTIPLE), `required`, `minSelections`, `maxSelections`.
+
+**Integración en `DishForm`:**
+- Tres nuevas Cards: "Imagen", "Variantes", "Modificadores"
+- `variantGroups` y `modifierGroups` incluidos en el payload del formulario (sin IDs temporales)
+
+**Tests añadidos (2 suites, 14 tests):**
+
+| Suite | Tests |
+|-------|-------|
+| `VariantGroupEditor.test.tsx` | 7 — render vacío, añadir grupo, añadir opción, actualizar nombre (fireEvent.change), eliminar opción, eliminar grupo, múltiples grupos |
+| `ModifierGroupEditor.test.tsx` | 7 — render vacío, añadir grupo, selectionType selector, actualizar nombre, añadir opción, eliminar grupo, eliminar opción |
+
+---
+
+### Sprint 17 — Subida de imagen de plato (Multer + ImageUploader) ✅
+
+**Objetivo:** Permitir al admin subir una foto para cada plato. Backend con endpoint Multer y frontend con `ImageUploader` + hook `use-upload-image`.
+
+**Backend:**
+- `POST /admin/menu/upload-image` — `FileInterceptor` (Multer), `diskStorage` en `public/uploads/`, filtro de MIME, límite 5 MB
+- `NestExpressApplication` + `app.useStaticAssets()` para servir `public/` en producción
+- Devuelve `{ url: "http://host/uploads/filename.jpg" }`
+
+**Frontend:**
+- `use-upload-image.ts` — hook que llama a `api.upload(FormData)`, gestiona `isUploading`
+- `api.upload()` — `fetch` con `FormData` sin `Content-Type` (el navegador añade el boundary multipart)
+- `ImageUploader.tsx` — input file oculto, preview con `<Image fill>`, estado "Subiendo...", botón "Eliminar imagen"
+
+**Tests añadidos (1 suite, 6 tests):**
+
+| Suite | Tests |
+|-------|-------|
+| `ImageUploader.test.tsx` | 6 — placeholder sin imagen, trigger input al hacer click, preview cuando hay URL, spinner durante upload, llamada a onChange con URL, eliminar imagen |
+
+---
+
+### Sprint 18 — Dashboard de estadísticas conectado (TDD) ✅
+
+**Objetivo:** El dashboard del admin debe mostrar estadísticas reales del día (pedidos totales, entregados, ingresos, ticket medio), no solo pedidos activos.
+
+**Backend:**
+
+- Nuevo método `getByBranchAndDate(branchId, date)` en `IOrderRepository` y `PrismaOrderRepository` — consulta pedidos de un día completo (00:00–23:59:59)
+- `GetDashboardStatsService` — calcula `ordersTotal`, `revenue`, `avgTicket`, `deliveredCount`, `activeCount`, `cancelledCount` a partir de pedidos entregados del día
+- `GET /admin/orders/stats?branchId=&date=` — endpoint en `AdminOrderController` (colocado ANTES de `GET :orderId` para evitar conflicto de rutas)
+
+**Tests backend (1 suite, 7 tests):**
+
+| Suite | Tests |
+|-------|-------|
+| `get-dashboard-stats.service.spec.ts` | 7 — sin pedidos, solo activos, solo entregados, revenue correcto, avgTicket, cancelledCount, fecha de hoy por defecto |
+
+**Frontend:**
+
+- `use-dashboard-stats.ts` — hook React Query, `GET /admin/orders/stats`, `refetchInterval: 30000`, `enabled: !!branchId`
+- `dashboard/page.tsx` — refactorizado para usar `useDashboardStats` (stats reales) + `useActiveOrders` (lista en tiempo real). KPIs: "Pedidos hoy", "Entregados hoy", "Ingresos hoy", "Ticket medio"
+
+**Tests frontend (1 suite, 6 tests):**
+
+| Suite | Tests |
+|-------|-------|
+| `use-dashboard-stats.test.ts` | 6 — disabled sin branchId, fetches con branchId, incluye date param, omite date si undefined, loading state, error state |
+
+**Cobertura total:**
+- Backend: 319 tests, 46 suites — todos en verde
+- Frontend: 68 tests, 9 suites — todos en verde
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
@@ -576,7 +653,7 @@ npx jest --passWithNoTests
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
 
-**Cobertura actual: 312 tests, 45 suites — todos en verde.**
+**Cobertura actual: 319 tests, 46 suites — todos en verde.**
 
 Para tests de frontend (Vitest):
 

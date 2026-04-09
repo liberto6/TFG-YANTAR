@@ -3,7 +3,7 @@ import { CreateOrderService } from '../create-order.service'
 import { EmptyCartError } from '../../../domain/errors/empty-cart.error'
 import { DishNotFoundError } from '../../../../menu/domain/errors/dish-not-found.error'
 
-const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), save: jest.fn() }
+const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), getByBranchAndDate: jest.fn(), save: jest.fn() }
 const mockNotificationService = { notifyNewOrder: jest.fn(), notifyOrderStatusChange: jest.fn() }
 const mockDishChecker = { getActiveDishInfo: jest.fn() }
 

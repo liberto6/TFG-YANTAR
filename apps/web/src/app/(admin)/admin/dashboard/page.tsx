@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
 import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
 import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
+import { useDashboardStats } from "@/features/admin-dashboard/hooks/use-dashboard-stats";
 import type { Order } from "@/features/orders/types/order.types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -30,17 +31,19 @@ function useActiveOrders(branchId: string | null) {
 
 export default function DashboardPage() {
   const { selectedBranchId } = useSelectedBranch();
-  const { data: orders, isLoading } = useActiveOrders(selectedBranchId);
-  const active = orders?.filter((o) => ["PENDING","ACCEPTED","PREPARING","READY"].includes(o.status)) ?? [];
-  const delivered = orders?.filter((o) => o.status === "DELIVERED") ?? [];
-  const revenue = delivered.reduce((s, o) => s + o.total, 0);
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(selectedBranchId);
+  const { data: activeOrders, isLoading: ordersLoading } = useActiveOrders(selectedBranchId);
 
-  const stats = [
-    { label: "Pedidos activos", value: active.length },
-    { label: "Entregados hoy", value: delivered.length },
-    { label: "Ingresos (entregados)", value: `${revenue.toFixed(2)} €` },
-    { label: "Pendientes de confirmar", value: orders?.filter((o) => o.status === "PENDING").length ?? 0 },
+  const isLoading = statsLoading || ordersLoading;
+
+  const statCards = [
+    { label: "Pedidos hoy", value: stats?.ordersTotal ?? 0 },
+    { label: "Entregados hoy", value: stats?.deliveredCount ?? 0 },
+    { label: "Ingresos hoy", value: stats ? `${stats.revenue.toFixed(2)} €` : "0.00 €" },
+    { label: "Ticket medio", value: stats ? `${stats.avgTicket.toFixed(2)} €` : "0.00 €" },
   ];
+
+  const active = activeOrders ?? [];
 
   return (
     <div className="space-y-6">
@@ -52,13 +55,13 @@ export default function DashboardPage() {
         <BranchSelectorBar />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="pb-2">
               <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-foreground">{isLoading ? "..." : stat.value}</p>
+              <p className="text-2xl font-bold text-foreground">{statsLoading ? "..." : stat.value}</p>
             </CardContent>
           </Card>
         ))}

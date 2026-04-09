@@ -5,7 +5,7 @@ import { Order } from '../../../domain/entities/order.entity'
 import { OrderItem } from '../../../domain/entities/order-item.entity'
 import { OrderNotFoundError } from '../../../domain/errors/order-not-found.error'
 
-const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), save: jest.fn() }
+const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), getByBranchAndDate: jest.fn(), save: jest.fn() }
 const mockNotificationService = { notifyNewOrder: jest.fn(), notifyOrderStatusChange: jest.fn() }
 
 const pendingOrder = Order.create({

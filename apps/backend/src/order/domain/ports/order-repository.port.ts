@@ -9,5 +9,6 @@ export interface IOrderRepository {
     offset?: number,
   ): Promise<Order[]>
   getActiveByBranch(branchId: string): Promise<Order[]>
+  getByBranchAndDate(branchId: string, date: Date): Promise<Order[]>
   save(order: Order): Promise<Order>
 }

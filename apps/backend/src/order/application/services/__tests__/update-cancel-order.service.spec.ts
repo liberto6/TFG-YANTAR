@@ -6,7 +6,7 @@ import { OrderItem } from '../../../domain/entities/order-item.entity'
 import { OrderNotFoundError } from '../../../domain/errors/order-not-found.error'
 import { InvalidOrderTransitionError } from '../../../domain/errors/invalid-order-transition.error'
 
-const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), save: jest.fn() }
+const mockOrderRepository = { getById: jest.fn(), getByCustomer: jest.fn(), getActiveByBranch: jest.fn(), getByBranchAndDate: jest.fn(), save: jest.fn() }
 const mockNotificationService = { notifyNewOrder: jest.fn(), notifyOrderStatusChange: jest.fn() }
 
 const item = new OrderItem({ id: 'i-1', orderId: 'o-1', dishId: 'd-1', dishName: 'Pizza', quantity: 1, unitPrice: 10, selectedVariant: null, selectedModifiers: [], notes: null })

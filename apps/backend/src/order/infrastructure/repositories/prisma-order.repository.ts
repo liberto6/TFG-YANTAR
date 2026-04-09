@@ -88,6 +88,19 @@ export class PrismaOrderRepository implements IOrderRepository {
     return records.map((r) => this.toDomain(r as unknown as PrismaOrderRecord))
   }
 
+  async getByBranchAndDate(branchId: string, date: Date): Promise<Order[]> {
+    const start = new Date(date)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(date)
+    end.setHours(23, 59, 59, 999)
+    const records = await this.prisma.order.findMany({
+      where: { branchId, createdAt: { gte: start, lte: end } },
+      include: ORDER_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    })
+    return records.map((r) => this.toDomain(r as unknown as PrismaOrderRecord))
+  }
+
   async save(order: Order): Promise<Order> {
     const record = await this.prisma.$transaction(async (tx) => {
       await tx.order.upsert({

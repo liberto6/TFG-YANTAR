@@ -32,6 +32,7 @@ const mockOrderRepo = {
   getById: jest.fn(),
   getByCustomer: jest.fn(),
   getActiveByBranch: jest.fn(),
+  getByBranchAndDate: jest.fn(),
   save: jest.fn(),
 }
 const mockNotification = {

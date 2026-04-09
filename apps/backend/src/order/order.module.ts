@@ -12,6 +12,7 @@ import { CancelOrderService } from './application/services/cancel-order.service'
 import { GetOrderService } from './application/services/get-order.service'
 import { GetOrderHistoryService } from './application/services/get-order-history.service'
 import { GetActiveOrdersService } from './application/services/get-active-orders.service'
+import { GetDashboardStatsService } from './application/services/get-dashboard-stats.service'
 import { PrismaOrderRepository } from './infrastructure/repositories/prisma-order.repository'
 import { WsNotificationAdapter } from './infrastructure/adapters/ws-notification.adapter'
 import { MenuDishCheckerAdapter } from './infrastructure/adapters/menu-dish-checker.adapter'
@@ -31,6 +32,7 @@ import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
     GetOrderService,
     GetOrderHistoryService,
     GetActiveOrdersService,
+    GetDashboardStatsService,
     {
       provide: 'IOrderRepository',
       useClass: PrismaOrderRepository,

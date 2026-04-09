@@ -17,6 +17,7 @@ import { RejectOrderService } from '../../application/services/reject-order.serv
 import { UpdateOrderStatusService } from '../../application/services/update-order-status.service'
 import { GetOrderService } from '../../application/services/get-order.service'
 import { GetActiveOrdersService } from '../../application/services/get-active-orders.service'
+import { GetDashboardStatsService, DashboardStatsResponse } from '../../application/services/get-dashboard-stats.service'
 import {
   AcceptOrderRequest,
   RejectOrderRequest,
@@ -33,6 +34,7 @@ export class AdminOrderController {
     private readonly updateOrderStatusService: UpdateOrderStatusService,
     private readonly getOrderService: GetOrderService,
     private readonly getActiveOrdersService: GetActiveOrdersService,
+    private readonly getDashboardStatsService: GetDashboardStatsService,
   ) {}
 
   private async getCompanyId(req: Request): Promise<string> {
@@ -48,6 +50,15 @@ export class AdminOrderController {
   ): Promise<OrderResponse[]> {
     void req
     return this.getActiveOrdersService.execute(branchId)
+  }
+
+  @Get('stats')
+  async getDashboardStats(
+    @Query('branchId') branchId: string,
+    @Query('date') dateStr?: string,
+  ): Promise<DashboardStatsResponse> {
+    const date = dateStr ? new Date(dateStr) : new Date()
+    return this.getDashboardStatsService.execute(branchId, date)
   }
 
   @Get(':orderId')
