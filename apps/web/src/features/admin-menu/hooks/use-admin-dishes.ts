@@ -18,7 +18,7 @@ export function useToggleAvailability() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (dishId: string) =>
-      api.patch<Dish>(`/admin/menu/dishes/${dishId}/availability`),
+      api.patch<Dish>(`/admin/menu/dishes/${dishId}/toggle`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dishes"] });
       queryClient.invalidateQueries({ queryKey: ["menu"] });
@@ -54,7 +54,7 @@ export function useUpdateDish() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ dishId, data }: { dishId: string; data: unknown }) =>
-      api.patch<Dish>(`/admin/menu/dishes/${dishId}`, data),
+      api.put<Dish>(`/admin/menu/dishes/${dishId}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-dishes"] });
       queryClient.invalidateQueries({ queryKey: ["menu"] });
