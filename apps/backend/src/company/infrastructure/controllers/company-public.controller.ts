@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Post, Body, Query } from '@nestjs/common'
+import { IsString, IsNotEmpty, IsNumber } from 'class-validator'
 import { GetCompanyConfigService } from '../../application/services/get-company-config.service'
 import { GetTimeSlotsService, TimeSlotsResponse } from '../../application/services/get-time-slots.service'
 import { GetBranchesService, BranchSummary } from '../../application/services/get-branches.service'
@@ -6,8 +7,14 @@ import { CheckDeliveryService, DeliveryCheckResult } from '../../application/ser
 import { CompanyConfigResponse } from '../../application/dtos/company-config.dto'
 
 class CheckDeliveryBody {
+  @IsString()
+  @IsNotEmpty()
   branchId!: string
+
+  @IsNumber()
   lat!: number
+
+  @IsNumber()
   lng!: number
 }
 

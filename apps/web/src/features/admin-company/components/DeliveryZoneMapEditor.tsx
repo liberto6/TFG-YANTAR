@@ -33,8 +33,12 @@ export function DeliveryZoneMapEditor({
 
     const mapCenter: [number, number] = center ?? [40.4168, -3.7038];
 
-    Promise.all([import("leaflet"), import("leaflet-draw")]).then(([L]) => {
+    import("leaflet").then(async (L) => {
       const Lmap = L.default ?? (L as any);
+
+      // leaflet-draw expects window.L to exist before it loads
+      (window as any).L = Lmap;
+      await import("leaflet-draw");
 
       // Fix broken icon paths under webpack bundling
       delete (Lmap.Icon.Default.prototype as any)._getIconUrl;
