@@ -458,6 +458,24 @@ NEXT_PUBLIC_COMPANY_SLUG=mi-restaurante
 
 ---
 
+### Sprint 14 — Selector de sede dinámico (multi-sede real) ✅
+
+**Caso de uso:** La vista operativa, el dashboard y el historial de pedidos del admin estaban anclados a `NEXT_PUBLIC_BRANCH_ID`, un UUID hardcodeado en `.env.local`. Con múltiples sedes, un empleado/admin necesita poder elegir qué sede está viendo sin tocar ningún fichero de configuración.
+
+**Cambios:**
+
+- `features/operativo/hooks/use-selected-branch.ts` — hook compartido que carga las sedes del admin (`useAdminBranches()`), auto-selecciona si solo hay una, y persiste la elección en `localStorage` bajo `yantar_admin_selected_branch`
+- `features/operativo/components/BranchSelectorBar.tsx` — componente de selector:
+  - **1 sede:** muestra solo el nombre, sin interacción (sin fricción en el caso habitual)
+  - **N sedes:** dropdown con todas las sedes disponibles; cambiar sede recarga los datos al instante
+- `app/(operativo)/operativo/page.tsx` — usa `useSelectedBranch()` en lugar del env var; muestra `BranchSelectorBar` en la cabecera del kanban
+- `app/(admin)/admin/dashboard/page.tsx` — mismo patrón; selector en la esquina superior derecha
+- `app/(admin)/admin/orders/page.tsx` — mismo patrón; queries y WebSocket se actualizan al cambiar de sede
+
+**Resultado:** `NEXT_PUBLIC_BRANCH_ID` ya no es necesario para el funcionamiento de la aplicación. La variable puede eliminarse del `.env.local` en producción.
+
+---
+
 ## Desarrollo local
 
 ### Requisitos

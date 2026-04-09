@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { api } from "@/lib/api-client";
+import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
+import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order } from "@/features/orders/types/order.types";
-
-const BRANCH_ID = process.env.NEXT_PUBLIC_BRANCH_ID!;
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente", ACCEPTED: "Aceptado", PREPARING: "Preparando",
@@ -19,17 +19,18 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-gray-100 text-gray-500",
 };
 
-function useActiveOrders() {
+function useActiveOrders(branchId: string | null) {
   return useQuery({
-    queryKey: ["admin-active-orders", BRANCH_ID],
-    queryFn: () => api.get<Order[]>(`/admin/orders/active?branchId=${BRANCH_ID}`),
+    queryKey: ["admin-active-orders", branchId],
+    queryFn: () => api.get<Order[]>(`/admin/orders/active?branchId=${branchId}`),
     refetchInterval: 10000,
-    enabled: !!BRANCH_ID,
+    enabled: !!branchId,
   });
 }
 
 export default function DashboardPage() {
-  const { data: orders, isLoading } = useActiveOrders();
+  const { selectedBranchId } = useSelectedBranch();
+  const { data: orders, isLoading } = useActiveOrders(selectedBranchId);
   const active = orders?.filter((o) => ["PENDING","ACCEPTED","PREPARING","READY"].includes(o.status)) ?? [];
   const delivered = orders?.filter((o) => o.status === "DELIVERED") ?? [];
   const revenue = delivered.reduce((s, o) => s + o.total, 0);
@@ -43,9 +44,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Resumen de pedidos en tu restaurante</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">Resumen de pedidos en tu restaurante</p>
+        </div>
+        <BranchSelectorBar />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (

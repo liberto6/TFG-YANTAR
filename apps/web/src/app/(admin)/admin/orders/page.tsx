@@ -5,9 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api-client";
+import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
+import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
-
-const BRANCH_ID = process.env.NEXT_PUBLIC_BRANCH_ID!;
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Pendiente", ACCEPTED: "Aceptado", PREPARING: "Preparando",
@@ -33,12 +33,13 @@ const NEXT_ACTIONS: Partial<Record<OrderStatus, { label: string; endpoint: strin
 export default function AdminOrdersPage() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("active");
+  const { selectedBranchId } = useSelectedBranch();
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["admin-active-orders", BRANCH_ID],
-    queryFn: () => api.get<Order[]>(`/admin/orders/active?branchId=${BRANCH_ID}`),
+    queryKey: ["admin-active-orders", selectedBranchId],
+    queryFn: () => api.get<Order[]>(`/admin/orders/active?branchId=${selectedBranchId}`),
     refetchInterval: 10000,
-    enabled: !!BRANCH_ID,
+    enabled: !!selectedBranchId,
   });
 
   const actionMutation = useMutation({
@@ -55,9 +56,12 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Pedidos</h2>
-        <p className="text-sm text-muted-foreground">Gestiona los pedidos de tu restaurante</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Pedidos</h2>
+          <p className="text-sm text-muted-foreground">Gestiona los pedidos de tu restaurante</p>
+        </div>
+        <BranchSelectorBar />
       </div>
 
       <div className="flex gap-2">

@@ -2,6 +2,8 @@
 
 import { useActiveOrders } from "@/features/operativo/hooks/use-active-orders";
 import { OrderKanbanCard } from "@/features/operativo/components/OrderKanbanCard";
+import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
+import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
 const COLUMNS: { status: OrderStatus; label: string; color: string }[] = [
@@ -12,8 +14,8 @@ const COLUMNS: { status: OrderStatus; label: string; color: string }[] = [
 ];
 
 export default function OperativoPage() {
-  const branchId = process.env.NEXT_PUBLIC_BRANCH_ID;
-  const { data: orders, isLoading } = useActiveOrders(branchId);
+  const { selectedBranchId } = useSelectedBranch();
+  const { data: orders, isLoading } = useActiveOrders(selectedBranchId ?? undefined);
 
   if (isLoading) {
     return (
@@ -34,6 +36,11 @@ export default function OperativoPage() {
     (orders ?? []).filter((o) => o.status === status);
 
   return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-foreground">Vista operativa</h1>
+        <BranchSelectorBar />
+      </div>
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {COLUMNS.map((col) => {
         const colOrders = ordersByStatus(col.status);
@@ -57,6 +64,7 @@ export default function OperativoPage() {
           </div>
         );
       })}
+    </div>
     </div>
   );
 }
