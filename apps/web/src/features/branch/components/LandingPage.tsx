@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useBranches, BranchSummary } from "../hooks/use-branches";
@@ -13,7 +13,39 @@ interface Props {
   welcomeMessage: string | null;
 }
 
+interface AddressSuggestion {
+  displayName: string;
+  shortName: string;
+}
+
 type Step = "branches" | "mode" | "address";
+
+async function fetchSuggestions(query: string): Promise<AddressSuggestion[]> {
+  if (query.length < 3) return [];
+  try {
+    const encoded = encodeURIComponent(query);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=5&countrycodes=es&addressdetails=1`,
+      { headers: { "Accept-Language": "es" } },
+    );
+    const data = await res.json();
+    return data.map((item: any) => {
+      // Build a short readable label: "Calle, número, ciudad (provincia)"
+      const a = item.address ?? {};
+      const parts = [
+        a.road && a.house_number ? `${a.road}, ${a.house_number}` : a.road,
+        a.city ?? a.town ?? a.village ?? a.municipality,
+        a.state,
+      ].filter(Boolean);
+      return {
+        displayName: item.display_name,
+        shortName: parts.length >= 2 ? parts.join(", ") : item.display_name,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
 
 export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
   const router = useRouter();
@@ -25,6 +57,58 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
   const [selected, setSelected] = useState<BranchSummary | null>(null);
   const [address, setAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
+
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Debounced autocomplete fetch
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (address.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsFetchingSuggestions(true);
+      const results = await fetchSuggestions(address);
+      setSuggestions(results);
+      setShowSuggestions(results.length > 0);
+      setIsFetchingSuggestions(false);
+    }, 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [address]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleSelectSuggestion(suggestion: AddressSuggestion) {
+    setAddress(suggestion.shortName);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAddressError(null);
+    clearError();
+  }
+
+  function handleAddressChange(value: string) {
+    setAddress(value);
+    setAddressError(null);
+    clearError();
+  }
 
   function handlePickBranch(branch: BranchSummary) {
     setSelected(branch);
@@ -48,13 +132,13 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
       setAddressError("Introduce tu dirección.");
       return;
     }
+    setShowSuggestions(false);
     setAddressError(null);
     clearError();
 
     const result = await checkDelivery(selected.id, address.trim());
 
     if (result === null && !deliveryError) {
-      // No zone found
       setAddressError(
         "Tu dirección está fuera de nuestra zona de reparto. Puedes recoger tu pedido en el local.",
       );
@@ -178,7 +262,7 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
         {step === "address" && selected && (
           <>
             <button
-              onClick={() => { setStep("mode"); setAddressError(null); clearError(); }}
+              onClick={() => { setStep("mode"); setAddressError(null); clearError(); setShowSuggestions(false); }}
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
             >
               ← Volver
@@ -187,14 +271,47 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
               ¿A dónde te lo enviamos?
             </p>
 
-            <input
-              type="text"
-              placeholder="Calle, número, ciudad..."
-              value={address}
-              onChange={(e) => { setAddress(e.target.value); setAddressError(null); clearError(); }}
-              onKeyDown={(e) => e.key === "Enter" && handleDelivery()}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            {/* Input + autocomplete dropdown */}
+            <div ref={wrapperRef} className="relative">
+              <input
+                type="text"
+                placeholder="Calle, número, ciudad..."
+                value={address}
+                onChange={(e) => handleAddressChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { setShowSuggestions(false); handleDelivery(); }
+                  if (e.key === "Escape") setShowSuggestions(false);
+                }}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                autoComplete="off"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+
+              {/* Loading indicator */}
+              {isFetchingSuggestions && (
+                <div className="absolute right-3 top-3.5">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              )}
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+                  {suggestions.map((s, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-0"
+                      >
+                        <span className="font-medium text-foreground">{s.shortName}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             {(addressError || deliveryError) && (
               <div className="rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800">

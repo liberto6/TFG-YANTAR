@@ -40,6 +40,12 @@ export function DeliveryZoneMapEditor({
       (window as any).L = Lmap;
       await import("leaflet-draw");
 
+      // Guard: if the container already has a Leaflet instance (hot reload), remove it first
+      const container = containerRef.current! as any;
+      if (container._leaflet_id) {
+        container._leaflet_id = undefined;
+      }
+
       // Fix broken icon paths under webpack bundling
       delete (Lmap.Icon.Default.prototype as any)._getIconUrl;
       Lmap.Icon.Default.mergeOptions({
@@ -51,7 +57,7 @@ export function DeliveryZoneMapEditor({
           "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
       });
 
-      const map = Lmap.map(containerRef.current!, { zoomControl: true }).setView(
+      const map = Lmap.map(container, { zoomControl: true }).setView(
         mapCenter,
         13,
       );
