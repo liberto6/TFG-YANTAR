@@ -420,6 +420,23 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 12.1 — Fixes post-integración y autocompletado de dirección ✅
+
+**Fixes:**
+
+- `CheckDeliveryBody` (controlador público) — faltaban decoradores `@IsString` / `@IsNumber`; el `ValidationPipe` con `whitelist: true` descartaba los tres campos (`branchId`, `lat`, `lng`) provocando que todas las direcciones fallaran como fuera de zona
+- `DeliveryZoneMapEditor` — `leaflet-draw` requiere `window.L` como global antes de cargarse; se asigna explícitamente tras importar Leaflet. También se limpia `_leaflet_id` del contenedor antes de inicializar para evitar el error `Map container is already initialized` en hot reload de Next.js
+
+**Mejora UX — autocompletado de dirección:**
+
+- Al escribir 3+ caracteres en el campo de dirección de la landing, se consulta Nominatim con debounce de 350 ms
+- Resultados filtrados a España (`countrycodes=es`) — evita ambigüedades con calles homónimas en otras ciudades (causa raíz del fallo de geocodificación original)
+- Dropdown con hasta 5 sugerencias en formato legible: `Calle, número, ciudad, provincia`
+- Al seleccionar una sugerencia el texto se carga en el input; el usuario confirma manualmente pulsando el botón
+- Spinner de carga mientras se obtienen sugerencias; cierre con clic fuera o tecla Escape
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
