@@ -476,6 +476,36 @@ NEXT_PUBLIC_COMPANY_SLUG=mi-restaurante
 
 ---
 
+### Sprint 15 — Tests de integración en el frontend (Vitest) ✅
+
+**Objetivo:** Cubrir con tests automatizados los hooks y componentes clave del frontend introducidos en los sprints anteriores. Se sigue el mismo estilo de mock‑first que en los tests de backend: RED → GREEN → REFACTOR.
+
+**Infraestructura de test:**
+
+- `vitest.config.ts` — entorno `jsdom`, globals activados, alias `@/` para `src/`
+- `src/test/setup.ts` — imports de `@testing-library/jest-dom`; mocks globales de `next/navigation` (useRouter, useParams, usePathname, useSearchParams), `next/image` y `localStorage`
+- `src/test/test-utils.tsx` — `customRender` y `customRenderHook` con `QueryClientProvider` envolviendo cada test; `retry: false, gcTime: 0` para evitar retries y caches entre tests
+
+**Tests añadidos (4 suites, 26 tests):**
+
+| Suite | Tests | Qué cubre |
+|-------|-------|-----------|
+| `use-company-config.test.ts` | 5 | Resolución de id desde slug, endpoint correcto, campos de branding, estado de carga, propagación de errores |
+| `use-selected-branch.test.ts` | 6 | Loading state, auto-selección (1 sede y múltiples), restauración desde localStorage, fallback a primera sede si el id guardado ya no existe, persistencia al cambiar |
+| `BranchSelectorBar.test.tsx` | 5 | Skeleton durante carga, texto simple para sede única, null para sede única sin selección, dropdown con todas las sedes, llamada a `setSelectedBranchId` al cambiar opción |
+| `LandingPage.test.tsx` | 10 | Nombre de franquicia en cabecera, listado de sedes, skeletons de carga, navegación entre pasos, recogida en local (selectBranch + router.push), paso de dirección, botón deshabilitado sin dirección, flujo completo de delivery exitoso, error de zona fuera de reparto, vuelta atrás entre pasos |
+
+**Patrones usados:**
+- `vi.mock` + `await import` para mocks a nivel de módulo sin contaminar otros tests
+- `vi.hoisted` para capturar referencias a `vi.fn()` accesibles dentro de factories de `vi.mock` (caso `useRouter` de `next/navigation`)
+- `vi.mocked(...).mockReturnValue` para controlar la respuesta del hook en cada test
+- `userEvent` (v14) para interacciones de usuario realistas (click, type, selectOptions)
+- `waitFor` para aserciones sobre estado asíncrono (React Query, promesas de mutation)
+
+**Cobertura total frontend: 42 tests, 5 suites — todos en verde.**
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
@@ -523,9 +553,7 @@ CORS_ORIGIN="http://localhost:3000"
 **Frontend** (`apps/web/.env.local`):
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_COMPANY_ID=a1b2c3d4-0000-0000-0000-000000000001
 NEXT_PUBLIC_COMPANY_SLUG=napoli
-NEXT_PUBLIC_BRANCH_ID=a1b2c3d4-0000-0000-0000-000000000002
 ```
 
 ### Datos de demo
@@ -548,7 +576,7 @@ npx jest --passWithNoTests
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
 
-**Cobertura actual: 301 tests, 44 suites — todos en verde.**
+**Cobertura actual: 312 tests, 45 suites — todos en verde.**
 
 Para tests de frontend (Vitest):
 
