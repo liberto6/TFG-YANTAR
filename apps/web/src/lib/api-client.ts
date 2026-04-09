@@ -61,4 +61,21 @@ export const api = {
 
   delete: <T = unknown>(endpoint: string, options?: RequestOptions) =>
     apiClient<T>(endpoint, { ...options, method: "DELETE" }),
+
+  upload: <T = unknown>(endpoint: string, formData: FormData): Promise<T> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || `API error: ${res.status}`);
+      }
+      return res.json() as Promise<T>;
+    });
+  },
 };

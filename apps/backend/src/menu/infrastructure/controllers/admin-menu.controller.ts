@@ -9,8 +9,14 @@ import {
   Put,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { diskStorage } from 'multer'
+import { extname, join } from 'path'
+import { existsSync, mkdirSync } from 'fs'
 import { Request } from 'express'
 import { AuthGuard } from '../../../shared/infrastructure/guards/auth.guard'
 import { AdminGuard } from '../../../shared/infrastructure/guards/admin.guard'
@@ -49,6 +55,37 @@ export class AdminMenuController {
     const userId = (req as any).userId as string
     const user = await this.getCurrentUserService.execute(userId)
     return user.companyId!
+  }
+
+  // ─── Image upload ─────────────────────────────────────────────────────────
+
+  @Post('upload-image')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadPath = join(process.cwd(), 'public', 'uploads')
+          if (!existsSync(uploadPath)) mkdirSync(uploadPath, { recursive: true })
+          cb(null, uploadPath)
+        },
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`
+          cb(null, `${unique}${extname(file.originalname)}`)
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+      fileFilter: (_req, file, cb) => {
+        const allowed = /image\/(jpeg|jpg|png|webp|gif)/
+        cb(null, allowed.test(file.mimetype))
+      },
+    }),
+  )
+  async uploadImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ): Promise<{ url: string }> {
+    const host = `${req.protocol}://${req.get('host')}`
+    return { url: `${host}/uploads/${file.filename}` }
   }
 
   // ─── Categories ───────────────────────────────────────────────────────────

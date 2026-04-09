@@ -9,6 +9,7 @@ import { useAdminCategories } from "../hooks/use-admin-categories";
 import { useCreateDish, useUpdateDish } from "../hooks/use-admin-dishes";
 import { VariantGroupEditor } from "./VariantGroupEditor";
 import { ModifierGroupEditor } from "./ModifierGroupEditor";
+import { ImageUploader } from "./ImageUploader";
 import type { Dish, VariantGroup, ModifierGroup } from "@/features/menu/types/menu.types";
 
 const ALLERGEN_OPTIONS = [
@@ -45,6 +46,7 @@ export function DishForm({ dish }: DishFormProps) {
   const [allergens, setAllergens] = useState<Set<string>>(
     new Set(dish?.allergenCodes ?? []),
   );
+  const [imageUrl, setImageUrl] = useState<string | null>(dish?.imageUrl ?? null);
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>(
     dish?.variantGroups ?? [],
   );
@@ -73,6 +75,7 @@ export function DishForm({ dish }: DishFormProps) {
       basePrice: parseFloat(basePrice),
       categoryId,
       allergenCodes: Array.from(allergens),
+      imageUrl: imageUrl ?? undefined,
       variantGroups: variantGroups.map(({ id, ...rest }) => rest),
       modifierGroups: modifierGroups.map(({ id, ...rest }) => rest),
     };
@@ -148,6 +151,15 @@ export function DishForm({ dish }: DishFormProps) {
               </select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="font-medium">Imagen</h2>
+        </CardHeader>
+        <CardContent>
+          <ImageUploader value={imageUrl} onChange={setImageUrl} />
         </CardContent>
       </Card>
 
