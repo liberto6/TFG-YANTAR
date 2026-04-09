@@ -44,6 +44,10 @@ export class VariantGroupRequest {
   name!: string
 
   @IsOptional()
+  @IsBoolean()
+  required?: boolean
+
+  @IsOptional()
   @IsNumber()
   sortOrder?: number
 
