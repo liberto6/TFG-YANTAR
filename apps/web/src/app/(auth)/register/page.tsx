@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useCompanyConfig } from "@/features/company/hooks/use-company-config";
 import type { AuthUser } from "@/features/auth/types/auth.types";
 
 interface RegisterResponse {
@@ -23,8 +24,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
-
-  const companyId = process.env.NEXT_PUBLIC_COMPANY_ID!;
+  const { data: config } = useCompanyConfig();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -39,7 +39,7 @@ export default function RegisterPage() {
         email,
         password,
         displayName: name,
-        companyId,
+        companyId: config?.id,
       });
       // After register, token = userId (mock auth)
       login(data.user.id, data.user);

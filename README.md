@@ -437,6 +437,27 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 13 — Eliminar `NEXT_PUBLIC_COMPANY_ID` ✅
+
+**Caso de uso:** La variable `NEXT_PUBLIC_COMPANY_ID` era un UUID hardcodeado en `.env.local` que rompía el modelo white-label: un nuevo restaurante tenía que conocer y configurar su UUID interno. Ahora solo hace falta `NEXT_PUBLIC_COMPANY_SLUG` (el nombre amigable) y el sistema resuelve el UUID automáticamente desde la API.
+
+**Cambios:**
+
+- `features/company/hooks/use-company-config.ts` — nuevo hook React Query que llama a `GET /companies/:slug/config` (endpoint ya existente y testeado). `staleTime: Infinity` para no repetir la llamada durante la sesión.
+- `features/menu/hooks/use-menu.ts` — usa `useCompanyConfig()` para obtener `companyId`; query desactivada hasta que se resuelva (`enabled: !!companyId`)
+- `features/menu/hooks/use-dish-detail.ts` — mismo patrón
+- `features/admin-menu/hooks/use-admin-dishes.ts` y `use-admin-categories.ts` — los endpoints admin resuelven `companyId` desde el JWT; se reemplaza `COMPANY_ID` por `COMPANY_SLUG` solo en la clave de caché de React Query
+- `app/(auth)/login/page.tsx` y `register/page.tsx` — obtienen `companyId` de `useCompanyConfig()` en lugar del env var
+- `.env.local` — eliminada la variable `NEXT_PUBLIC_COMPANY_ID`
+
+**Resultado:** Para desplegar Yantar en un nuevo restaurante solo hacen falta dos variables:
+```env
+NEXT_PUBLIC_API_URL=https://api.mirestaurante.es
+NEXT_PUBLIC_COMPANY_SLUG=mi-restaurante
+```
+
+---
+
 ## Desarrollo local
 
 ### Requisitos

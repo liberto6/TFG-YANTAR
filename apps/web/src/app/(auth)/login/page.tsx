@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useCompanyConfig } from "@/features/company/hooks/use-company-config";
 import type { AuthUser } from "@/features/auth/types/auth.types";
 
 interface LoginResponse {
@@ -22,8 +23,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
-
-  const companyId = process.env.NEXT_PUBLIC_COMPANY_ID!;
+  const { data: config } = useCompanyConfig();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -33,7 +33,7 @@ export default function LoginPage() {
       const data = await api.post<LoginResponse>("/auth/login", {
         email,
         password,
-        companyId,
+        companyId: config?.id,
       });
       login(data.token, data.user);
       const destination = data.user.role === "RESTAURANT_ADMIN" ? "/admin/dashboard" : "/menu";
