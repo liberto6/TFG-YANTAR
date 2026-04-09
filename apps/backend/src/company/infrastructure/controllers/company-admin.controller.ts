@@ -30,6 +30,7 @@ import { SetOperatingHoursRequest, OperatingHourResponse } from '../../applicati
 import {
   CreateDeliveryZoneRequest,
   UpdateDeliveryZoneRequest,
+  UpdateZonePolygonRequest,
   DeliveryZoneResponse,
 } from '../../application/dtos/delivery-zone.dto'
 
@@ -170,5 +171,15 @@ export class CompanyAdminController {
   ): Promise<void> {
     const companyId = await this.getCompanyId(req)
     return this.manageDeliveryZonesService.deleteZone(companyId, zoneId)
+  }
+
+  @Patch('delivery-zones/:zoneId/polygon')
+  async updateZonePolygon(
+    @Req() req: Request,
+    @Param('zoneId') zoneId: string,
+    @Body() request: UpdateZonePolygonRequest,
+  ): Promise<DeliveryZoneResponse> {
+    const companyId = await this.getCompanyId(req)
+    return this.manageDeliveryZonesService.updateZonePolygon(companyId, zoneId, request)
   }
 }

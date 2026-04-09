@@ -153,6 +153,55 @@ describe('AvailabilityService', () => {
     })
   })
 
+  describe('isPointInZone', () => {
+    // Simple square polygon around Seville city center (approx)
+    const sevilleSquare = {
+      type: 'Polygon' as const,
+      coordinates: [[
+        [-6.0, 37.3],
+        [-5.8, 37.3],
+        [-5.8, 37.5],
+        [-6.0, 37.5],
+        [-6.0, 37.3],
+      ]],
+    }
+
+    const makeZone = (polygon: object | null) =>
+      DeliveryZone.restore({
+        id: 'z1', branchId: 'b1', companyId: 'c1',
+        name: 'Test', postalCodes: [], minOrderAmount: 0,
+        deliveryFee: 2, estimatedTimeMinutes: 30, isActive: true,
+        polygon,
+      })
+
+    it('returns true when point is inside the polygon', () => {
+      const zone = makeZone(sevilleSquare)
+      // Seville center: ~37.38, -5.99
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(true)
+    })
+
+    it('returns false when point is outside the polygon', () => {
+      const zone = makeZone(sevilleSquare)
+      // Madrid: ~40.41, -3.70
+      expect(service.isPointInZone(zone, 40.41, -3.70)).toBe(false)
+    })
+
+    it('returns false when zone has no polygon defined', () => {
+      const zone = makeZone(null)
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(false)
+    })
+
+    it('returns false when zone is not active', () => {
+      const zone = DeliveryZone.restore({
+        id: 'z1', branchId: 'b1', companyId: 'c1',
+        name: 'Test', postalCodes: [], minOrderAmount: 0,
+        deliveryFee: 2, estimatedTimeMinutes: 30, isActive: false,
+        polygon: sevilleSquare,
+      })
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(false)
+    })
+  })
+
   describe('findNearestBranch', () => {
     // Madrid: 40.4168, -3.7038
     // Barcelona: 41.3851, 2.1734

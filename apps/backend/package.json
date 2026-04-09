@@ -21,6 +21,7 @@
     "@nestjs/platform-socket.io": "^10.4.0",
     "@nestjs/websockets": "^10.4.0",
     "@prisma/client": "^5.18.0",
+    "@turf/turf": "^6.5.0",
     "@yantar/shared": "workspace:*",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
@@ -56,6 +57,9 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "node_modules/(?!@turf)"
+    ],
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],

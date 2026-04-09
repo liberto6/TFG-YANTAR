@@ -371,6 +371,55 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 12 — Selección de sede y zonas de reparto con polígonos ✅
+
+**Caso de uso:** Al entrar en la web del restaurante el cliente siempre ve una *landing page* donde elige la sede y la modalidad (recogida o domicilio). Para domicilio introduce su dirección; el sistema la geocodifica con Nominatim y comprueba si cae dentro de algún polígono de reparto de la sede. El administrador define esas zonas dibujando polígonos directamente sobre un mapa Leaflet.
+
+**Backend — nuevas piezas (TDD estricto):**
+
+- `DeliveryZone.polygon` — campo `GeoPolygon | null` añadido a la entidad: `withPolygon()`, `toProps()` privado, serialización en el repositorio Prisma
+- `AvailabilityService.isPointInZone(zone, lat, lng)` — función pura usando `@turf/turf` v6 (CommonJS): comprueba si un punto lat/lng cae dentro del polígono GeoJSON de la zona
+- `GetBranchesService` — devuelve el listado de sedes activas de la empresa con sus modos de servicio
+- `CheckDeliveryService` — dada una sede y coordenadas, itera sus zonas activas con `isPointInZone` y devuelve `{ zoneId, zoneName, deliveryFee, estimatedTimeMinutes, minOrderAmount }` o `null` si ninguna cubre el punto
+- Migración Prisma — columna `polygon JSONB` en la tabla `delivery_zones`
+- `CompanyPublicController` — tres nuevos endpoints públicos:
+  ```
+  GET  /companies/:slug/branches
+  POST /companies/:slug/check-delivery  { branchId, lat, lng }
+  ```
+- `CompanyAdminController` — endpoint de edición de polígono:
+  ```
+  PATCH /admin/company/delivery-zones/:zoneId/polygon  { polygon: GeoPolygon | null }
+  ```
+
+**Frontend — Customer:**
+
+- `BranchContext` + `BranchProvider` — contexto React con persistencia en `localStorage` (`yantar_selected_branch`): almacena `{ id, name, address, deliveryMode, deliveryFee, deliveryZoneId, customerAddress? }`
+- `features/branch/hooks/use-branches.ts` — React Query, llama a `GET /companies/:slug/branches`
+- `features/branch/hooks/use-check-delivery.ts` — geocodifica la dirección con Nominatim (OSM, sin API key) y llama a `POST /companies/:slug/check-delivery`
+- `features/branch/components/LandingPage.tsx` — flujo de 3 pasos: elegir sede → elegir modalidad → introducir dirección; maneja el caso de zona fuera de reparto con botón de fallback a recogida; siempre visible para que el cliente pueda cambiar de sede
+- `app/page.tsx` — convertida a Server Component asíncrono: descarga la configuración de branding (`/companies/:slug/config`) y la inyecta como CSS vars en `:root` antes de renderizar la landing
+- `app/(customer)/checkout/page.tsx` — elimina el selector de modalidad y el input de dirección (ya resueltos en la landing); muestra un resumen de la sede y modo elegidos; usa `deliveryFee` y `customerAddress` del contexto para el body del pedido
+
+**Frontend — Admin:**
+
+- `features/admin-company/hooks/use-delivery-zones.ts` — hooks React Query: `useDeliveryZones`, `useCreateZone`, `useUpdateZone`, `useDeleteZone`, `useUpdateZonePolygon`
+- `features/admin-company/components/DeliveryZoneMapEditor.tsx` — mapa Leaflet imperativo (sin react-leaflet SSR), carga dinámica en cliente:
+  - Muestra el polígono existente en azul (`#0ea5e9`)
+  - Herramienta de dibujo de polígonos (`leaflet-draw`) — solo polígonos, sin rutas ni círculos
+  - Eventos `CREATED / EDITED / DELETED` actualizan el estado pendiente
+  - Botón "Guardar zona en mapa" solo visible cuando hay cambios sin guardar
+- `features/admin-company/components/DeliveryZonesSection.tsx` — sección completa de gestión de zonas: listado, formulario de creación, edición inline, eliminación con confirmación, botón "Ver mapa" para expandir el editor
+- `app/(admin)/admin/branches/[branchId]/page.tsx` — añade `<DeliveryZonesSection>` debajo de `<HoursEditor>` cuando la sede tiene DELIVERY activo
+
+**Tests** (+8 tests respecto Sprint 11):
+- `availability.service.spec.ts` — 4 nuevos tests de `isPointInZone`: punto dentro, punto fuera, zona inactiva, zona sin polígono
+- `get-branches-check-delivery.service.spec.ts` — 7 tests nuevos (3 de `GetBranchesService`, 4 de `CheckDeliveryService`): empresa no encontrada, sin sedes activas, punto en zona, punto fuera de zona
+
+**Cobertura total: 312 tests, 45 suites — todos en verde.**
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
@@ -457,11 +506,13 @@ pnpm test:watch    # modo watch
 
 ## Flujo del cliente (happy path)
 
-1. Accede a `pedir.restaurante.es` → carta del restaurante
-2. (Opcional) Filtra alergenos
-3. Selecciona plato → elige variante + modificadores + notas
-4. Agrega al carrito (persiste entre sesiones)
-5. Va al checkout → elige PICKUP o DELIVERY + metodo de pago
-6. Confirma pedido → tracking en tiempo real
-7. El restaurante acepta desde la vista operativa
-8. Cliente ve el progreso: Aceptado → Preparando → Listo → Entregado
+1. Accede a `pedir.restaurante.es` → **landing page** con sedes de la franquicia
+2. Elige sede → modalidad (recogida o domicilio)
+3. Si domicilio → introduce dirección → el sistema verifica zona de reparto (polígono)
+4. (Opcional) Filtra alergenos en la carta
+5. Selecciona plato → elige variante + modificadores + notas
+6. Agrega al carrito (persiste entre sesiones)
+7. Va al checkout → elige franja horaria + método de pago
+8. Confirma pedido → tracking en tiempo real
+9. El restaurante acepta desde la vista operativa
+10. Cliente ve el progreso: Aceptado → Preparando → Listo → Entregado

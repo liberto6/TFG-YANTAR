@@ -4,23 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useCart } from "@/features/cart/hooks/use-cart";
+import { useBranch } from "@/features/branch/context/branch-context";
 import { api } from "@/lib/api-client";
 import type { Order } from "@/features/orders/types/order.types";
 import { RedeemAtCheckout } from "@/features/loyalty/components/RedeemAtCheckout";
 import type { LoyaltyReward } from "@/features/loyalty/hooks/use-loyalty";
 import { TimeSlotSelector } from "@/features/checkout/components/TimeSlotSelector";
 
-type DeliveryMode = "PICKUP" | "DELIVERY";
 type PaymentMethod = "CASH" | "CARD";
 
 export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
+  const { branch: selectedBranch } = useBranch();
   const router = useRouter();
 
-  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("PICKUP");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [scheduledTime, setScheduledTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -28,8 +26,12 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const branchId = process.env.NEXT_PUBLIC_BRANCH_ID!;
-  const deliveryFee = deliveryMode === "DELIVERY" ? 2.5 : 0;
+  // Values come from branch selection on the landing page
+  const branchId = selectedBranch?.id ?? process.env.NEXT_PUBLIC_BRANCH_ID!;
+  const deliveryMode = selectedBranch?.deliveryMode ?? "PICKUP";
+  const deliveryAddress =
+    deliveryMode === "DELIVERY" ? (selectedBranch?.customerAddress ?? "") : "";
+  const deliveryFee = deliveryMode === "DELIVERY" ? (selectedBranch?.deliveryFee ?? 0) : 0;
 
   const rewardDiscount =
     selectedReward?.type === "DISCOUNT_FIXED"
@@ -85,34 +87,25 @@ export default function CheckoutPage() {
     <div className="space-y-5 pb-6">
       <h1 className="text-xl font-bold text-foreground">Confirmar pedido</h1>
 
-      {/* Delivery mode */}
-      <Card>
-        <CardHeader className="pb-2">
-          <h2 className="font-medium text-foreground">Modalidad</h2>
-        </CardHeader>
-        <CardContent className="flex gap-3">
-          <Button variant={deliveryMode === "PICKUP" ? "default" : "outline"} className="flex-1" onClick={() => setDeliveryMode("PICKUP")}>
-            Recogida
-          </Button>
-          <Button variant={deliveryMode === "DELIVERY" ? "default" : "outline"} className="flex-1" onClick={() => setDeliveryMode("DELIVERY")}>
-            Envio a casa
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Delivery address */}
-      {deliveryMode === "DELIVERY" && (
+      {/* Branch + delivery mode summary — set on landing page */}
+      {selectedBranch && (
         <Card>
-          <CardHeader className="pb-2">
-            <h2 className="font-medium text-foreground">Direccion de entrega</h2>
-          </CardHeader>
-          <CardContent>
-            <Input
-              placeholder="Calle, numero, piso..."
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              required
-            />
+          <CardContent className="pt-4 flex items-start justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="font-medium text-foreground">{selectedBranch.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {deliveryMode === "PICKUP" ? "🛍 Recogida en el local" : "🚴 Envío a domicilio"}
+              </p>
+              {deliveryMode === "DELIVERY" && deliveryAddress && (
+                <p className="text-xs text-muted-foreground">{deliveryAddress}</p>
+              )}
+            </div>
+            <button
+              onClick={() => router.push("/")}
+              className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+            >
+              Cambiar
+            </button>
           </CardContent>
         </Card>
       )}

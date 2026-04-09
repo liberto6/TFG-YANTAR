@@ -120,6 +120,7 @@ model DeliveryZone {
   deliveryFee          Float    @default(0) @map("delivery_fee")
   estimatedTimeMinutes Int      @default(30) @map("estimated_time_minutes")
   isActive             Boolean  @default(true) @map("is_active")
+  polygon              Json?    @map("polygon")
 
   branch Branch @relation(fields: [branchId], references: [id])
 

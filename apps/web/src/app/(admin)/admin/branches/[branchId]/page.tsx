@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useAdminBranches } from "@/features/admin-company/hooks/use-admin-branches";
 import { BranchForm } from "@/features/admin-company/components/BranchForm";
 import { HoursEditor } from "@/features/admin-company/components/HoursEditor";
+import { DeliveryZonesSection } from "@/features/admin-company/components/DeliveryZonesSection";
 
 export default function EditBranchPage() {
   const { branchId } = useParams<{ branchId: string }>();
@@ -26,6 +27,9 @@ export default function EditBranchPage() {
       </div>
       <BranchForm branch={branch} />
       <HoursEditor branchId={branchId} />
+      {branch.serviceModes.includes("DELIVERY") && (
+        <DeliveryZonesSection branch={branch} />
+      )}
     </div>
   );
 }

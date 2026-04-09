@@ -1,3 +1,4 @@
+import * as turf from '@turf/turf'
 import { OperatingHour } from '../value-objects/operating-hour.vo'
 import { DeliveryZone } from '../entities/delivery-zone.entity'
 import { Branch } from '../entities/branch.entity'
@@ -51,6 +52,13 @@ export class AvailabilityService {
     }
 
     return nearest
+  }
+
+  isPointInZone(zone: DeliveryZone, lat: number, lng: number): boolean {
+    if (!zone.isActive || !zone.polygon) return false
+    const pt = turf.point([lng, lat]) // GeoJSON: [longitude, latitude]
+    const poly = turf.polygon(zone.polygon.coordinates)
+    return turf.booleanPointInPolygon(pt, poly)
   }
 
   generateTimeSlots(
