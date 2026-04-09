@@ -24,6 +24,7 @@ export class UpdateBrandingService {
     const saved = await this.companyRepository.save(updated)
 
     return CompanyConfigResponse.from({
+      id: saved.id,
       name: saved.name,
       slug: saved.slug,
       description: saved.description,

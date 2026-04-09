@@ -1,4 +1,5 @@
 export class CompanyConfigResponse {
+  id!: string
   name!: string
   slug!: string
   description!: string | null
@@ -16,6 +17,7 @@ export class CompanyConfigResponse {
   appName!: string | null
 
   static from(props: {
+    id: string
     name: string
     slug: string
     description: string | null
@@ -33,6 +35,7 @@ export class CompanyConfigResponse {
     appName: string | null
   }): CompanyConfigResponse {
     const response = new CompanyConfigResponse()
+    response.id = props.id
     response.name = props.name
     response.slug = props.slug
     response.description = props.description

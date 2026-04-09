@@ -8,6 +8,7 @@ import { UpdateBrandingService } from './application/services/update-branding.se
 import { ManageBranchesService } from './application/services/manage-branches.service'
 import { ManageOperatingHoursService } from './application/services/manage-operating-hours.service'
 import { ManageDeliveryZonesService } from './application/services/manage-delivery-zones.service'
+import { GetTimeSlotsService } from './application/services/get-time-slots.service'
 import { PrismaCompanyRepository } from './infrastructure/repositories/prisma-company.repository'
 import { PrismaBranchRepository } from './infrastructure/repositories/prisma-branch.repository'
 import { PrismaDeliveryZoneRepository } from './infrastructure/repositories/prisma-delivery-zone.repository'
@@ -24,6 +25,7 @@ import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
     ManageBranchesService,
     ManageOperatingHoursService,
     ManageDeliveryZonesService,
+    GetTimeSlotsService,
     {
       provide: 'ICompanyRepository',
       useClass: PrismaCompanyRepository,

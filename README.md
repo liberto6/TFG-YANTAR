@@ -330,6 +330,47 @@ PENDING/ACCEPTED → CANCELLED
 
 ---
 
+### Sprint 11 — Selector de franja horaria en checkout ✅
+
+**Caso de uso:** El cliente puede elegir si quiere recibir su pedido *lo antes posible* o en una franja horaria concreta del día. El sistema genera las franjas disponibles en base al horario real del restaurante, excluyendo las que ya han pasado (margen mínimo de 30 minutos desde el momento actual).
+
+**Backend — nuevas piezas (TDD estricto):**
+
+- `AvailabilityService.generateTimeSlots(hours, targetDate, now, intervalMinutes)` — función pura añadida al servicio de dominio existente:
+  - Genera franjas cada `intervalMinutes` (30 min) dentro del horario del día
+  - Si el día destino es hoy, excluye franjas con menos de 30 min de margen respecto a `now`
+  - Devuelve `{ label: "14:30", value: "ISO string" }[]`
+  - Sin efecto en días marcados como cerrados o sin horario configurado
+
+- `GetTimeSlotsService` — nuevo use case en application layer:
+  - Recibe `{ companyId, branchId, date?, now? }` — `date` por defecto es hoy
+  - Verifica que la sede existe y pertenece a la empresa (`BranchNotFoundError` si no)
+  - Delega la generación al dominio
+  - Devuelve `{ date: string, slots: TimeSlot[] }`
+
+- `CompanyPublicController` — nuevo endpoint público:
+  ```
+  GET /companies/:slug/branches/:branchId/slots?date=YYYY-MM-DD
+  ```
+
+- `CompanyConfigResponse` — añadido campo `id` para que el endpoint pueda resolver `companyId` desde el slug sin inyectar el repositorio en el controlador
+
+**Frontend:**
+
+- `features/checkout/hooks/use-time-slots.ts` — React Query, llama al nuevo endpoint con `staleTime: 5 min`
+- `features/checkout/components/TimeSlotSelector.tsx` — botón "Lo antes posible" siempre visible + pills con las franjas disponibles; skeleton de carga mientras se resuelve la query
+- `app/(customer)/checkout/page.tsx` — nueva sección "¿Cuándo quieres tu pedido?" entre modalidad de entrega y método de pago; `scheduledTime` incluido en el body de `POST /orders`; hora programada visible en el resumen del pedido
+- `app/(customer)/orders/[orderId]/page.tsx` — muestra la hora programada bajo el stepper de estado
+- `features/operativo/components/OrderKanbanCard.tsx` — badge azul "🕐 Para las 14:30" en la tarjeta operativa cuando el pedido tiene hora programada
+
+**Tests** (+12 tests respecto Sprint 10):
+- `availability.service.spec.ts` — 7 nuevos tests de `generateTimeSlots`: franjas vacías (sin horario, día cerrado), generación correcta de intervalos, exclusión de pasadas, ISO value, día futuro sin filtro
+- `get-time-slots.service.spec.ts` — 5 tests: `BranchNotFoundError`, branch cerrado, franjas correctas, fecha en respuesta, default a hoy
+
+**Cobertura total: 301 tests, 44 suites — todos en verde.**
+
+---
+
 ## Desarrollo local
 
 ### Requisitos
@@ -402,7 +443,7 @@ npx jest --passWithNoTests
 Los tests cubren las capas **domain** y **application** (TDD estricto).
 La capa de infraestructura se verifica mediante tests de integracion e2e (pendiente).
 
-**Cobertura actual: 289 tests, 43 suites — todos en verde.**
+**Cobertura actual: 301 tests, 44 suites — todos en verde.**
 
 Para tests de frontend (Vitest):
 

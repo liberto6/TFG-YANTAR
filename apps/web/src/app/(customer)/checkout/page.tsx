@@ -10,6 +10,7 @@ import { api } from "@/lib/api-client";
 import type { Order } from "@/features/orders/types/order.types";
 import { RedeemAtCheckout } from "@/features/loyalty/components/RedeemAtCheckout";
 import type { LoyaltyReward } from "@/features/loyalty/hooks/use-loyalty";
+import { TimeSlotSelector } from "@/features/checkout/components/TimeSlotSelector";
 
 type DeliveryMode = "PICKUP" | "DELIVERY";
 type PaymentMethod = "CASH" | "CARD";
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("PICKUP");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [scheduledTime, setScheduledTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [selectedReward, setSelectedReward] = useState<LoyaltyReward | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +61,7 @@ export default function CheckoutPage() {
         deliveryAddress: deliveryMode === "DELIVERY" ? deliveryAddress : undefined,
         deliveryFee: deliveryMode === "DELIVERY" ? deliveryFee : 0,
         paymentMethod,
+        scheduledTime: scheduledTime ?? undefined,
         notes: notes.trim() || undefined,
         rewardId: selectedReward?.id ?? undefined,
         items: items.map((item) => ({
@@ -113,6 +116,31 @@ export default function CheckoutPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Time slot */}
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="font-medium text-foreground">¿Cuándo quieres tu pedido?</h2>
+        </CardHeader>
+        <CardContent>
+          <TimeSlotSelector
+            branchId={branchId}
+            value={scheduledTime}
+            onChange={setScheduledTime}
+          />
+          {scheduledTime && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Hora programada:{" "}
+              <span className="font-medium text-foreground">
+                {new Date(scheduledTime).toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Payment method */}
       <Card>
@@ -178,6 +206,17 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-sm text-green-600">
                 <span>Descuento ({selectedReward.name})</span>
                 <span>−{rewardDiscount.toFixed(2)} €</span>
+              </div>
+            )}
+            {scheduledTime && (
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Hora programada</span>
+                <span>
+                  {new Date(scheduledTime).toLocaleTimeString("es-ES", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
               </div>
             )}
             <div className="flex justify-between font-semibold">

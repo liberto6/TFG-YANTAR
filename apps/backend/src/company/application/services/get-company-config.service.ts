@@ -27,13 +27,14 @@ export class GetCompanyConfigService {
   }
 
   private toResponse(company: {
-    name: string; slug: string; description: string | null; logoUrl: string | null;
+    id: string; name: string; slug: string; description: string | null; logoUrl: string | null;
     faviconUrl: string | null; fontFamily: string | null; colorPrimary: string | null;
     colorSecondary: string | null; colorAccent: string | null; colorBackground: string | null;
     colorSurface: string | null; colorText: string | null; colorTextMuted: string | null;
     welcomeMessage: string | null; appName: string | null;
   }): CompanyConfigResponse {
     return CompanyConfigResponse.from({
+      id: company.id,
       name: company.name,
       slug: company.slug,
       description: company.description,

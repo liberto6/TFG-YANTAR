@@ -124,8 +124,19 @@ export default function OrderDetailPage() {
       <Card>
         <CardContent className="pt-4">
           <OrderTracker status={order.status} />
+          {order.scheduledTime && (
+            <p className="mt-3 text-center text-sm text-muted-foreground">
+              Hora programada:{" "}
+              <span className="font-medium text-foreground">
+                {new Date(order.scheduledTime).toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </p>
+          )}
           {order.estimatedMinutes && (
-            <p className="mt-3 text-center text-sm font-medium text-foreground">
+            <p className="mt-1 text-center text-sm font-medium text-foreground">
               Tiempo estimado: {order.estimatedMinutes} min
             </p>
           )}

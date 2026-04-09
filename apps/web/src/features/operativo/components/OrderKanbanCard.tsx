@@ -51,6 +51,16 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
           ))}
         </ul>
 
+        {order.scheduledTime && (
+          <p className="rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800">
+            🕐 Para las{" "}
+            {new Date(order.scheduledTime).toLocaleTimeString("es-ES", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        )}
+
         {order.notes && (
           <p className="rounded bg-yellow-50 px-2 py-1 text-xs text-yellow-800">
             Nota: {order.notes}
