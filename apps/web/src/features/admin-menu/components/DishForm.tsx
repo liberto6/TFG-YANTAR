@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAdminCategories } from "../hooks/use-admin-categories";
 import { useCreateDish, useUpdateDish } from "../hooks/use-admin-dishes";
-import type { Dish } from "@/features/menu/types/menu.types";
+import { VariantGroupEditor } from "./VariantGroupEditor";
+import { ModifierGroupEditor } from "./ModifierGroupEditor";
+import type { Dish, VariantGroup, ModifierGroup } from "@/features/menu/types/menu.types";
 
 const ALLERGEN_OPTIONS = [
   { code: "GLUTEN", label: "Gluten" },
@@ -43,6 +45,12 @@ export function DishForm({ dish }: DishFormProps) {
   const [allergens, setAllergens] = useState<Set<string>>(
     new Set(dish?.allergenCodes ?? []),
   );
+  const [variantGroups, setVariantGroups] = useState<VariantGroup[]>(
+    dish?.variantGroups ?? [],
+  );
+  const [modifierGroups, setModifierGroups] = useState<ModifierGroup[]>(
+    dish?.modifierGroups ?? [],
+  );
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!dish;
@@ -65,6 +73,8 @@ export function DishForm({ dish }: DishFormProps) {
       basePrice: parseFloat(basePrice),
       categoryId,
       allergenCodes: Array.from(allergens),
+      variantGroups: variantGroups.map(({ id, ...rest }) => rest),
+      modifierGroups: modifierGroups.map(({ id, ...rest }) => rest),
     };
     try {
       if (isEditing) {
@@ -162,6 +172,30 @@ export function DishForm({ dish }: DishFormProps) {
               </button>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="font-medium">Variantes</h2>
+          <p className="text-xs text-muted-foreground">
+            Opciones exclusivas que cambian el precio base (ej: tamaño). El cliente elige una.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <VariantGroupEditor groups={variantGroups} onChange={setVariantGroups} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="font-medium">Modificadores</h2>
+          <p className="text-xs text-muted-foreground">
+            Extras o eliminaciones opcionales (ej: sin cebolla, extra queso). Pueden ser múltiples.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ModifierGroupEditor groups={modifierGroups} onChange={setModifierGroups} />
         </CardContent>
       </Card>
 
