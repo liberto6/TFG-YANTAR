@@ -57,6 +57,11 @@ export class UpdateDeliveryZoneRequest {
   estimatedTimeMinutes?: number
 }
 
+export class UpdateZonePolygonRequest {
+  @IsOptional()
+  polygon?: object | null
+}
+
 export class DeliveryZoneResponse {
   id!: string
   branchId!: string
@@ -67,6 +72,7 @@ export class DeliveryZoneResponse {
   deliveryFee!: number
   estimatedTimeMinutes!: number
   isActive!: boolean
+  polygon!: object | null
 
   static fromEntity(zone: DeliveryZone): DeliveryZoneResponse {
     const response = new DeliveryZoneResponse()
@@ -79,6 +85,7 @@ export class DeliveryZoneResponse {
     response.deliveryFee = zone.deliveryFee
     response.estimatedTimeMinutes = zone.estimatedTimeMinutes
     response.isActive = zone.isActive
+    response.polygon = zone.polygon
     return response
   }
 }

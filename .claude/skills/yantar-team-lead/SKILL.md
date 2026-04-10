@@ -87,13 +87,21 @@ Seguir los patrones en `references/use-case-patterns.md`:
 - DTOs de Request/Response con class-validator
 - Errores de dominio, nunca HttpException
 
-### 4. Review por Feature
+### 4. Al Completar un Sprint
 
-Al completar una feature, ejecutar el protocolo en `references/review-checklist.md`:
-- Scoring de acoplamiento (A/B/C)
-- Compliance arquitectonica (pass/fail)
-- Cobertura de tests
-- Multi-tenancy check (company_id en toda query)
+Al terminar cada sprint:
+
+1. **Actualizar README.md** con una nueva sección `### Sprint N — Título ✅` que documente:
+   - Objetivo del sprint
+   - Archivos/componentes implementados
+   - Tests añadidos (tabla suite → nº tests → qué cubre)
+   - Cobertura total actualizada (backend + frontend)
+
+2. **Crear un commit local** con todos los cambios del sprint.
+
+3. **NO hacer push a GitHub** salvo que el usuario lo pida explícitamente.
+
+> Regla: `git commit` sí, `git push` nunca por defecto.
 
 ### 5. Principios White-Label
 

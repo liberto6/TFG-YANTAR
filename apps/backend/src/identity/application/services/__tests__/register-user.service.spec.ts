@@ -2,6 +2,7 @@ import { UserRole } from '@yantar/shared'
 import { RegisterUserService } from '../register-user.service'
 import { IUserRepository } from '../../../domain/ports/user-repository.port'
 import { IAuthService } from '../../../domain/ports/auth-service.port'
+import { IPasswordService } from '../../../domain/ports/password-service.port'
 import { User } from '../../../domain/entities/user.entity'
 import { EmailAlreadyInUseError } from '../../../domain/errors/email-already-in-use.error'
 import { RegisterUserRequest } from '../../dtos/register-user.dto'
@@ -10,6 +11,7 @@ describe('RegisterUserService', () => {
   let service: RegisterUserService
   let userRepository: jest.Mocked<IUserRepository>
   let authService: jest.Mocked<IAuthService>
+  let passwordService: jest.Mocked<IPasswordService>
 
   const request: RegisterUserRequest = {
     email: 'alice@example.com',
@@ -29,8 +31,12 @@ describe('RegisterUserService', () => {
       createAuthUser: jest.fn(),
       getUserIdFromToken: jest.fn(),
     }
+    passwordService = {
+      hash: jest.fn(),
+      verify: jest.fn(),
+    }
 
-    service = new RegisterUserService(userRepository, authService)
+    service = new RegisterUserService(userRepository, authService, passwordService)
   })
 
   it('should create a customer user on happy path', async () => {
@@ -98,11 +104,37 @@ describe('RegisterUserService', () => {
   it('should pass optional phone to user entity', async () => {
     userRepository.findByEmailAndCompany.mockResolvedValue(null)
     authService.createAuthUser.mockResolvedValue('auth-user-id')
+    passwordService.hash.mockResolvedValue('$2b$10$hashed')
     userRepository.save.mockImplementation(async (user) => user)
 
     await service.execute({ ...request, phone: '+34600000000' })
 
     const savedUser = userRepository.save.mock.calls[0][0]
     expect(savedUser.phone).toBe('+34600000000')
+  })
+
+  it('debería hashear la contraseña y almacenarla en el usuario', async () => {
+    userRepository.findByEmailAndCompany.mockResolvedValue(null)
+    authService.createAuthUser.mockResolvedValue('auth-user-id')
+    passwordService.hash.mockResolvedValue('$2b$10$hashedpassword')
+    userRepository.save.mockImplementation(async (user) => user)
+
+    await service.execute(request)
+
+    expect(passwordService.hash).toHaveBeenCalledWith('securePass123')
+    const savedUser = userRepository.save.mock.calls[0][0]
+    expect(savedUser.passwordHash).toBe('$2b$10$hashedpassword')
+  })
+
+  it('no debería exponer la contraseña en texto plano en ningún campo del usuario', async () => {
+    userRepository.findByEmailAndCompany.mockResolvedValue(null)
+    authService.createAuthUser.mockResolvedValue('auth-user-id')
+    passwordService.hash.mockResolvedValue('$2b$10$hashedpassword')
+    userRepository.save.mockImplementation(async (user) => user)
+
+    await service.execute(request)
+
+    const savedUser = userRepository.save.mock.calls[0][0]
+    expect(JSON.stringify(savedUser)).not.toContain('securePass123')
   })
 })

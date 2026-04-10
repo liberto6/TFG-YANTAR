@@ -14,6 +14,7 @@ import { Request } from 'express'
 import { AuthGuard } from '../../../shared/infrastructure/guards/auth.guard'
 import { AdminGuard } from '../../../shared/infrastructure/guards/admin.guard'
 import { GetCurrentUserService } from '../../../identity/application/services/get-current-user.service'
+import { GetCompanyConfigService } from '../../application/services/get-company-config.service'
 import { UpdateBrandingService } from '../../application/services/update-branding.service'
 import { ManageBranchesService } from '../../application/services/manage-branches.service'
 import { ManageOperatingHoursService } from '../../application/services/manage-operating-hours.service'
@@ -29,6 +30,7 @@ import { SetOperatingHoursRequest, OperatingHourResponse } from '../../applicati
 import {
   CreateDeliveryZoneRequest,
   UpdateDeliveryZoneRequest,
+  UpdateZonePolygonRequest,
   DeliveryZoneResponse,
 } from '../../application/dtos/delivery-zone.dto'
 
@@ -37,6 +39,7 @@ import {
 export class CompanyAdminController {
   constructor(
     private readonly getCurrentUserService: GetCurrentUserService,
+    private readonly getCompanyConfigService: GetCompanyConfigService,
     private readonly updateBrandingService: UpdateBrandingService,
     private readonly manageBranchesService: ManageBranchesService,
     private readonly manageOperatingHoursService: ManageOperatingHoursService,
@@ -47,6 +50,13 @@ export class CompanyAdminController {
     const userId = (req as any).userId as string
     const user = await this.getCurrentUserService.execute(userId)
     return user.companyId!
+  }
+
+  @Get('config')
+  async getConfig(@Req() req: Request): Promise<CompanyConfigResponse> {
+    const userId = (req as any).userId as string
+    const user = await this.getCurrentUserService.execute(userId)
+    return this.getCompanyConfigService.executeById(user.companyId!)
   }
 
   @Patch('branding')
@@ -161,5 +171,15 @@ export class CompanyAdminController {
   ): Promise<void> {
     const companyId = await this.getCompanyId(req)
     return this.manageDeliveryZonesService.deleteZone(companyId, zoneId)
+  }
+
+  @Patch('delivery-zones/:zoneId/polygon')
+  async updateZonePolygon(
+    @Req() req: Request,
+    @Param('zoneId') zoneId: string,
+    @Body() request: UpdateZonePolygonRequest,
+  ): Promise<DeliveryZoneResponse> {
+    const companyId = await this.getCompanyId(req)
+    return this.manageDeliveryZonesService.updateZonePolygon(companyId, zoneId, request)
   }
 }

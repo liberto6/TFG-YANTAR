@@ -91,6 +91,117 @@ describe('AvailabilityService', () => {
     })
   })
 
+  describe('generateTimeSlots', () => {
+    const makeHours = (dayOfWeek: number, openTime: string, closeTime: string, isClosed = false) =>
+      OperatingHour.create({ id: '1', branchId: 'b1', dayOfWeek, openTime, closeTime, isClosed })
+
+    // 2026-04-08 = Wednesday (dayOfWeek 3), "now" = 10:00
+    const wednesdayNow = new Date('2026-04-08T10:00:00')
+    const wednesdayDate = new Date('2026-04-08T00:00:00')
+
+    const wednesdayHours = [
+      makeHours(3, '12:00', '22:00'), // Wednesday open 12:00–22:00
+    ]
+
+    it('returns empty array when no operating hours for the target day', () => {
+      const mondayHours = [makeHours(1, '12:00', '22:00')]
+      const slots = service.generateTimeSlots(mondayHours, wednesdayDate, wednesdayNow, 30)
+      expect(slots).toEqual([])
+    })
+
+    it('returns empty array when day is marked as closed', () => {
+      const closedHours = [makeHours(3, '12:00', '22:00', true)]
+      const slots = service.generateTimeSlots(closedHours, wednesdayDate, wednesdayNow, 30)
+      expect(slots).toEqual([])
+    })
+
+    it('generates slots every 30 minutes within opening hours', () => {
+      // now = 10:00, branch opens 12:00–22:00 → all slots from 12:00 to 21:30
+      const slots = service.generateTimeSlots(wednesdayHours, wednesdayDate, wednesdayNow, 30)
+      expect(slots.length).toBeGreaterThan(0)
+      expect(slots[0].label).toBe('12:00')
+      expect(slots[slots.length - 1].label).toBe('21:30')
+    })
+
+    it('excludes slots within the next 30 minutes from now', () => {
+      // now = 11:45 → minFromNow = 11*60+45+30 = 735 = 12:15 → first slot >= 12:15 is 12:30
+      const now = new Date('2026-04-08T11:45:00')
+      const slots = service.generateTimeSlots(wednesdayHours, wednesdayDate, now, 30)
+      expect(slots[0].label).toBe('12:30')
+    })
+
+    it('returns no slots when all slots are past the buffer', () => {
+      const now = new Date('2026-04-08T22:00:00') // after closing
+      const slots = service.generateTimeSlots(wednesdayHours, wednesdayDate, now, 30)
+      expect(slots).toEqual([])
+    })
+
+    it('returns value as ISO string with correct hours and minutes', () => {
+      const slots = service.generateTimeSlots(wednesdayHours, wednesdayDate, wednesdayNow, 30)
+      const first = slots[0]
+      const date = new Date(first.value)
+      expect(date.getHours()).toBe(12)
+      expect(date.getMinutes()).toBe(0)
+    })
+
+    it('does not apply time filter when target date is a future day', () => {
+      // now = Wednesday 10:00, target = Thursday 2026-04-09 (dayOfWeek 4)
+      const thursdayHours = [makeHours(4, '12:00', '14:00')]
+      const thursdayDate = new Date('2026-04-09T00:00:00')
+      const slots = service.generateTimeSlots(thursdayHours, thursdayDate, wednesdayNow, 30)
+      expect(slots.map((s) => s.label)).toEqual(['12:00', '12:30', '13:00', '13:30'])
+    })
+  })
+
+  describe('isPointInZone', () => {
+    // Simple square polygon around Seville city center (approx)
+    const sevilleSquare = {
+      type: 'Polygon' as const,
+      coordinates: [[
+        [-6.0, 37.3],
+        [-5.8, 37.3],
+        [-5.8, 37.5],
+        [-6.0, 37.5],
+        [-6.0, 37.3],
+      ]],
+    }
+
+    const makeZone = (polygon: object | null) =>
+      DeliveryZone.restore({
+        id: 'z1', branchId: 'b1', companyId: 'c1',
+        name: 'Test', postalCodes: [], minOrderAmount: 0,
+        deliveryFee: 2, estimatedTimeMinutes: 30, isActive: true,
+        polygon,
+      })
+
+    it('returns true when point is inside the polygon', () => {
+      const zone = makeZone(sevilleSquare)
+      // Seville center: ~37.38, -5.99
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(true)
+    })
+
+    it('returns false when point is outside the polygon', () => {
+      const zone = makeZone(sevilleSquare)
+      // Madrid: ~40.41, -3.70
+      expect(service.isPointInZone(zone, 40.41, -3.70)).toBe(false)
+    })
+
+    it('returns false when zone has no polygon defined', () => {
+      const zone = makeZone(null)
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(false)
+    })
+
+    it('returns false when zone is not active', () => {
+      const zone = DeliveryZone.restore({
+        id: 'z1', branchId: 'b1', companyId: 'c1',
+        name: 'Test', postalCodes: [], minOrderAmount: 0,
+        deliveryFee: 2, estimatedTimeMinutes: 30, isActive: false,
+        polygon: sevilleSquare,
+      })
+      expect(service.isPointInZone(zone, 37.38, -5.99)).toBe(false)
+    })
+  })
+
   describe('findNearestBranch', () => {
     // Madrid: 40.4168, -3.7038
     // Barcelona: 41.3851, 2.1734

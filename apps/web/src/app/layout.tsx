@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { QueryProvider } from "@/lib/query-provider";
+import { AuthProvider } from "@/features/auth/context/auth-context";
+import { CartProvider } from "@/features/cart/context/cart-context";
+import { BranchProvider } from "@/features/branch/context/branch-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +18,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="min-h-screen antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <BranchProvider>
+              <CartProvider>{children}</CartProvider>
+            </BranchProvider>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

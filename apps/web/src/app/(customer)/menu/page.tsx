@@ -1,58 +1,117 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useMenu } from "@/features/menu/hooks/use-menu";
+import { useAllergenFilter } from "@/features/menu/hooks/use-allergen-filter";
+import { CategoryNav } from "@/features/menu/components/CategoryNav";
+import { DishCard } from "@/features/menu/components/DishCard";
+import { AllergenFilter } from "@/features/menu/components/AllergenFilter";
 
 export default function MenuPage() {
-  // Placeholder categories and items - will be fetched from API
-  const categories = [
-    { id: "1", name: "Entrantes" },
-    { id: "2", name: "Principales" },
-    { id: "3", name: "Postres" },
-    { id: "4", name: "Bebidas" },
-  ];
+  const { excluded, excludedList, toggle, clear, allergens } =
+    useAllergenFilter();
+  const { data, isLoading, isError } = useMenu(excludedList);
+
+  const categories = data?.categories ?? [];
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [showAllergens, setShowAllergens] = useState(false);
+
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  useEffect(() => {
+    if (categories.length > 0 && !activeCategoryId) {
+      setActiveCategoryId(categories[0].id);
+    }
+  }, [categories, activeCategoryId]);
+
+  function scrollToCategory(id: string) {
+    setActiveCategoryId(id);
+    sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="py-12 text-center text-muted-foreground">
+        No se pudo cargar la carta. Intenta de nuevo.
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Category quick-nav */}
-      <nav className="flex gap-2 overflow-x-auto pb-2">
-        {categories.map((cat) => (
-          <Button key={cat.id} variant="outline" size="sm" className="shrink-0">
-            {cat.name}
-          </Button>
-        ))}
-      </nav>
+      <CategoryNav
+        categories={categories}
+        activeId={activeCategoryId}
+        onSelect={scrollToCategory}
+      />
+
+      {/* Allergen filter toggle */}
+      <div>
+        <button
+          onClick={() => setShowAllergens((v) => !v)}
+          className="flex items-center gap-1 text-sm text-muted-foreground underline"
+        >
+          {showAllergens ? "Ocultar" : "Filtrar"} alergenos
+          {excluded.size > 0 && (
+            <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+              {excluded.size}
+            </span>
+          )}
+        </button>
+        {showAllergens && (
+          <div className="mt-2">
+            <AllergenFilter
+              allergens={allergens}
+              excluded={excluded}
+              onToggle={toggle}
+              onClear={clear}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Menu sections */}
-      {categories.map((cat) => (
-        <section key={cat.id} className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">{cat.name}</h2>
+      {categories.map((category) => (
+        <section
+          key={category.id}
+          ref={(el) => {
+            sectionRefs.current[category.id] = el;
+          }}
+          className="space-y-3"
+        >
+          <h2 className="text-lg font-semibold text-foreground">
+            {category.name}
+          </h2>
 
-          {/* Placeholder menu items */}
-          {[1, 2, 3].map((item) => (
-            <Card key={item}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-medium text-foreground">
-                      Plato de ejemplo {item}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Descripcion del plato con ingredientes principales
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-primary">
-                    {(8 + item * 2).toFixed(2)} EUR
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button size="sm" className="w-full">
-                  Anadir al pedido
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {category.dishes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No hay platos disponibles en esta categoria
+              {excluded.size > 0 ? " con los filtros aplicados" : ""}.
+            </p>
+          ) : (
+            category.dishes.map((dish) => (
+              <DishCard key={dish.id} dish={dish} />
+            ))
+          )}
         </section>
       ))}
+
+      {categories.length === 0 && (
+        <div className="py-12 text-center text-muted-foreground">
+          La carta esta vacia.
+        </div>
+      )}
     </div>
   );
 }

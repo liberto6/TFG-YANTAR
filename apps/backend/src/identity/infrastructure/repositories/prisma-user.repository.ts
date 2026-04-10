@@ -47,6 +47,7 @@ export class PrismaUserRepository implements IUserRepository {
     companyId: string | null
     role: string
     preferences: unknown
+    passwordHash?: string | null
     createdAt: Date
     updatedAt: Date
   }): User {
@@ -59,6 +60,7 @@ export class PrismaUserRepository implements IUserRepository {
       companyId: record.companyId,
       role: record.role as UserRole,
       preferences: (record.preferences as Record<string, unknown>) ?? {},
+      passwordHash: record.passwordHash ?? null,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     })
@@ -74,6 +76,7 @@ export class PrismaUserRepository implements IUserRepository {
       companyId: user.companyId,
       role: user.role,
       preferences: user.preferences as any,
+      passwordHash: user.passwordHash,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     }

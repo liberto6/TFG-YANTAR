@@ -60,6 +60,7 @@ export class PrismaDeliveryZoneRepository implements IDeliveryZoneRepository {
     deliveryFee: number
     estimatedTimeMinutes: number
     isActive: boolean
+    polygon?: unknown
   }): DeliveryZone {
     return DeliveryZone.restore({
       id: record.id,
@@ -71,6 +72,7 @@ export class PrismaDeliveryZoneRepository implements IDeliveryZoneRepository {
       deliveryFee: record.deliveryFee,
       estimatedTimeMinutes: record.estimatedTimeMinutes,
       isActive: record.isActive,
+      polygon: (record.polygon as any) ?? null,
     })
   }
 
@@ -85,6 +87,7 @@ export class PrismaDeliveryZoneRepository implements IDeliveryZoneRepository {
       deliveryFee: zone.deliveryFee,
       estimatedTimeMinutes: zone.estimatedTimeMinutes,
       isActive: zone.isActive,
+      polygon: zone.polygon ? JSON.parse(JSON.stringify(zone.polygon)) : undefined,
     }
   }
 }

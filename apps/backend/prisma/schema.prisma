@@ -10,16 +10,17 @@ datasource db {
 // ==================== IDENTITY ====================
 
 model User {
-  id          String   @id @default(uuid())
-  email       String
-  role        UserRole @default(CUSTOMER)
-  displayName String?  @map("display_name")
-  phone       String?
-  avatarUrl   String?  @map("avatar_url")
-  companyId   String?  @map("company_id")
-  preferences Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String
+  role         UserRole @default(CUSTOMER)
+  displayName  String?  @map("display_name")
+  phone        String?
+  avatarUrl    String?  @map("avatar_url")
+  companyId    String?  @map("company_id")
+  preferences  Json     @default("{}")
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   company         Company?          @relation(fields: [companyId], references: [id])
   orders          Order[]
@@ -59,11 +60,12 @@ model Company {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  users      User[]
-  branches   Branch[]
-  categories Category[]
-  dishes     Dish[]
-  rewards    Reward[]
+  users         User[]
+  branches      Branch[]
+  categories    Category[]
+  dishes        Dish[]
+  rewards       Reward[]
+  loyaltyConfig LoyaltyConfig?
 
   @@map("companies")
 }
@@ -118,6 +120,7 @@ model DeliveryZone {
   deliveryFee          Float    @default(0) @map("delivery_fee")
   estimatedTimeMinutes Int      @default(30) @map("estimated_time_minutes")
   isActive             Boolean  @default(true) @map("is_active")
+  polygon              Json?    @map("polygon")
 
   branch Branch @relation(fields: [branchId], references: [id])
 
@@ -305,6 +308,21 @@ model OrderItem {
 }
 
 // ==================== LOYALTY ====================
+
+model LoyaltyConfig {
+  id              String  @id @default(uuid())
+  companyId       String  @unique @map("company_id")
+  pointsPerEuro   Float   @default(1.0) @map("points_per_euro")
+  pointValueCents Float   @default(1.0) @map("point_value_cents")
+  minRedeemPoints Int     @default(100) @map("min_redeem_points")
+  isEnabled       Boolean @default(true) @map("is_enabled")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@map("loyalty_configs")
+}
 
 model LoyaltyAccount {
   id                  String   @id @default(uuid())

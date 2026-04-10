@@ -4,8 +4,10 @@ import { GetCurrentUserService } from './application/services/get-current-user.s
 import { RegisterUserService } from './application/services/register-user.service'
 import { RegisterBusinessService } from './application/services/register-business.service'
 import { UpdateProfileService } from './application/services/update-profile.service'
+import { LoginService } from './application/services/login.service'
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository'
 import { MockAuthAdapter } from './infrastructure/adapters/mock-auth.adapter'
+import { BcryptPasswordAdapter } from './infrastructure/adapters/bcrypt-password.adapter'
 import { CompanyModule } from '../company/company.module'
 
 @Module({
@@ -16,6 +18,7 @@ import { CompanyModule } from '../company/company.module'
     RegisterUserService,
     RegisterBusinessService,
     UpdateProfileService,
+    LoginService,
     {
       provide: 'IUserRepository',
       useClass: PrismaUserRepository,
@@ -23,6 +26,10 @@ import { CompanyModule } from '../company/company.module'
     {
       provide: 'IAuthService',
       useClass: MockAuthAdapter,
+    },
+    {
+      provide: 'IPasswordService',
+      useClass: BcryptPasswordAdapter,
     },
   ],
   exports: [GetCurrentUserService, 'IUserRepository', 'IAuthService'],

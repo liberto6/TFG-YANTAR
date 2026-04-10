@@ -9,7 +9,8 @@ export class MockAuthAdapter implements IAuthService {
   }
 
   async getUserIdFromToken(token: string): Promise<string | null> {
-    if (token.startsWith('user-')) {
+    // Mock: token IS the userId (UUID stored in localStorage after register/login)
+    if (token && token.length > 0) {
       return token
     }
     return null

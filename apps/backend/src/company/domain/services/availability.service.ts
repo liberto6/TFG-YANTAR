@@ -1,3 +1,4 @@
+import * as turf from '@turf/turf'
 import { OperatingHour } from '../value-objects/operating-hour.vo'
 import { DeliveryZone } from '../entities/delivery-zone.entity'
 import { Branch } from '../entities/branch.entity'
@@ -51,6 +52,63 @@ export class AvailabilityService {
     }
 
     return nearest
+  }
+
+  isPointInZone(zone: DeliveryZone, lat: number, lng: number): boolean {
+    if (!zone.isActive || !zone.polygon) return false
+    const pt = turf.point([lng, lat]) // GeoJSON: [longitude, latitude]
+    const poly = turf.polygon(zone.polygon.coordinates)
+    return turf.booleanPointInPolygon(pt, poly)
+  }
+
+  generateTimeSlots(
+    hours: OperatingHour[],
+    targetDate: Date,
+    now: Date,
+    intervalMinutes: number,
+  ): { label: string; value: string }[] {
+    const dayOfWeek = targetDate.getDay()
+    const dayHours = hours.filter((h) => h.dayOfWeek === dayOfWeek && !h.isClosed)
+    if (dayHours.length === 0) return []
+
+    const isToday =
+      targetDate.getFullYear() === now.getFullYear() &&
+      targetDate.getMonth() === now.getMonth() &&
+      targetDate.getDate() === now.getDate()
+
+    const minMinutesFromNow = now.getHours() * 60 + now.getMinutes() + intervalMinutes
+
+    const slots: { label: string; value: string }[] = []
+
+    for (const period of dayHours) {
+      const open = this.timeToMinutes(period.openTime)
+      const close = this.timeToMinutes(period.closeTime)
+
+      let current = open
+      while (current + intervalMinutes <= close) {
+        if (!isToday || current >= minMinutesFromNow) {
+          const h = Math.floor(current / 60)
+          const m = current % 60
+          const label = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+          const value = new Date(
+            targetDate.getFullYear(),
+            targetDate.getMonth(),
+            targetDate.getDate(),
+            h,
+            m,
+          ).toISOString()
+          slots.push({ label, value })
+        }
+        current += intervalMinutes
+      }
+    }
+
+    return slots
+  }
+
+  private timeToMinutes(time: string): number {
+    const [h, m] = time.split(':').map(Number)
+    return h * 60 + m
   }
 
   private haversine(

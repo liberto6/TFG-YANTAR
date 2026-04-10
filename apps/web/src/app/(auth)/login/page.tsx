@@ -2,21 +2,47 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api-client";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useCompanyConfig } from "@/features/company/hooks/use-company-config";
+import type { AuthUser } from "@/features/auth/types/auth.types";
+
+interface LoginResponse {
+  user: AuthUser;
+  token: string;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const router = useRouter();
+  const { data: config } = useCompanyConfig();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
-    // TODO: integrate with auth API
-    console.log("Login attempt:", { email });
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      const data = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
+        companyId: config?.id,
+      });
+      login(data.token, data.user);
+      const destination = data.user.role === "RESTAURANT_ADMIN" ? "/admin/dashboard" : "/menu";
+      router.push(destination);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al iniciar sesion");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -30,6 +56,11 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                {error}
+              </p>
+            )}
             <div className="space-y-2">
               <label
                 htmlFor="email"

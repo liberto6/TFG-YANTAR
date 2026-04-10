@@ -54,8 +54,8 @@ describe('GetCompanyConfigService', () => {
     expect(result.colorPrimary).toBe('#FF5500')
     expect(result.welcomeMessage).toBe('Welcome!')
     expect(result.appName).toBe('Taco App')
-    // Should not expose internal fields
-    expect((result as any).id).toBeUndefined()
+    expect(result.id).toBe('company-1')
+    // Internal fields not exposed
     expect((result as any).isActive).toBeUndefined()
     expect((result as any).domain).toBeUndefined()
   })
