@@ -33,3 +33,14 @@ apps/backend/prisma/*.db
 # Debug
 npm-debug.log*
 pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Uploads (archivos subidos por usuarios)
+apps/backend/public/uploads/
+
+# Claude Code
+.claude/
