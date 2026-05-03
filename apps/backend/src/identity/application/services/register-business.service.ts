@@ -33,7 +33,7 @@ export class RegisterBusinessService {
     const company = Company.create({
       id: randomUUID(),
       name: request.companyName,
-    })
+    }).activate()
     const savedCompany = await this.companyRepository.save(company)
 
     const user = User.createAdmin({

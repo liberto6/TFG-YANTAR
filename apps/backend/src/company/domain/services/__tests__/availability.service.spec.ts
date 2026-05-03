@@ -210,6 +210,7 @@ describe('AvailabilityService', () => {
       Branch.create({
         id: 'b1',
         companyId: 'c1',
+        slug: 'barcelona',
         name: 'Barcelona Branch',
         address: 'Barcelona',
         latitude: 41.3851,
@@ -219,6 +220,7 @@ describe('AvailabilityService', () => {
       Branch.create({
         id: 'b2',
         companyId: 'c1',
+        slug: 'valencia',
         name: 'Valencia Branch',
         address: 'Valencia',
         latitude: 39.4699,
@@ -238,6 +240,7 @@ describe('AvailabilityService', () => {
         Branch.create({
           id: 'b3',
           companyId: 'c1',
+          slug: 'no-location',
           name: 'No Location',
           address: 'Somewhere',
           serviceModes: [ServiceMode.DELIVERY],

@@ -107,4 +107,15 @@ describe('RegisterBusinessService', () => {
 
     expect(result.user.phone).toBe('+34600000000')
   })
+
+  it('should activate the company immediately after registration', async () => {
+    authService.createAuthUser.mockResolvedValue('auth-user-id')
+    companyRepository.save.mockImplementation(async (company) => company)
+    userRepository.save.mockImplementation(async (user) => user)
+
+    await service.execute(request)
+
+    const savedCompany = companyRepository.save.mock.calls[0][0]
+    expect(savedCompany.isActive).toBe(true)
+  })
 })

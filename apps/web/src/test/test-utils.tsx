@@ -2,6 +2,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, renderHook } from "@testing-library/react";
 import type { RenderOptions } from "@testing-library/react";
+import { TenantProvider } from "@/features/tenant/context/tenant-context";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -15,7 +16,9 @@ function makeQueryClient() {
 function Wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = React.useMemo(makeQueryClient, []);
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <TenantProvider slug="napoli">{children}</TenantProvider>
+    </QueryClientProvider>
   );
 }
 

@@ -3,13 +3,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import type { Dish } from "@/features/menu/types/menu.types";
-
-const COMPANY_SLUG = process.env.NEXT_PUBLIC_COMPANY_SLUG!;
+import { useTenantSlug } from "@/features/tenant/context/tenant-context";
 
 export function useAdminDishes(categoryId?: string) {
+  const companySlug = useTenantSlug();
   const qs = categoryId ? `?categoryId=${categoryId}` : "";
   return useQuery({
-    queryKey: ["admin-dishes", COMPANY_SLUG, categoryId],
+    queryKey: ["admin-dishes", companySlug, categoryId],
     queryFn: () => api.get<Dish[]>(`/admin/menu/dishes${qs}`),
   });
 }

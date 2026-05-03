@@ -1,7 +1,8 @@
+"use client";
+
 import { useState } from "react";
 import { api } from "@/lib/api-client";
-
-const COMPANY_SLUG = process.env.NEXT_PUBLIC_COMPANY_SLUG!;
+import { useTenantSlug } from "@/features/tenant/context/tenant-context";
 
 export interface DeliveryCheckResult {
   zoneId: string;
@@ -27,6 +28,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
 }
 
 export function useCheckDelivery() {
+  const companySlug = useTenantSlug();
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export function useCheckDelivery() {
         return null;
       }
       const result = await api.post<DeliveryCheckResult | null>(
-        `/companies/${COMPANY_SLUG}/check-delivery`,
+        `/companies/${companySlug}/check-delivery`,
         { branchId, lat: coords.lat, lng: coords.lng },
       );
       return result;

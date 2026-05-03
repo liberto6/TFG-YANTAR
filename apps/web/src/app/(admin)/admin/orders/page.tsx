@@ -2,37 +2,46 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Bike, ShoppingBag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyOrdersIllustration } from "@/components/illustrations";
 import { api } from "@/lib/api-client";
+import { cn } from "@/lib/cn";
+import {
+  ORDER_STATUS_LABEL,
+  ORDER_STATUS_VARIANT,
+} from "@/lib/order-status";
 import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
 import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Pendiente", ACCEPTED: "Aceptado", PREPARING: "Preparando",
-  READY: "Listo", DELIVERED: "Entregado", REJECTED: "Rechazado", CANCELLED: "Cancelado",
-};
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-700", ACCEPTED: "bg-blue-100 text-blue-700",
-  PREPARING: "bg-orange-100 text-orange-700", READY: "bg-green-100 text-green-700",
-  DELIVERED: "bg-gray-100 text-gray-600", REJECTED: "bg-red-100 text-red-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
+type StatusFilter = "active" | "done" | "all";
+
+const FILTER_LABEL: Record<StatusFilter, string> = {
+  active: "Activos",
+  done: "Finalizados",
+  all: "Todos",
 };
 
-const NEXT_ACTIONS: Partial<Record<OrderStatus, { label: string; endpoint: string }[]>> = {
+const NEXT_ACTIONS: Partial<
+  Record<OrderStatus, { label: string; endpoint: string; variant: "default" | "outline" | "destructive" }[]>
+> = {
   PENDING: [
-    { label: "Aceptar", endpoint: "accept" },
-    { label: "Rechazar", endpoint: "reject" },
+    { label: "Aceptar", endpoint: "accept", variant: "default" },
+    { label: "Rechazar", endpoint: "reject", variant: "outline" },
   ],
-  ACCEPTED: [{ label: "Preparando", endpoint: "preparing" }],
-  PREPARING: [{ label: "Listo", endpoint: "ready" }],
-  READY: [{ label: "Entregado", endpoint: "delivered" }],
+  ACCEPTED: [{ label: "Empezar preparación", endpoint: "preparing", variant: "default" }],
+  PREPARING: [{ label: "Marcar listo", endpoint: "ready", variant: "default" }],
+  READY: [{ label: "Marcar entregado", endpoint: "delivered", variant: "default" }],
 };
 
 export default function AdminOrdersPage() {
   const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const { selectedBranchId } = useSelectedBranch();
 
   const { data: orders, isLoading } = useQuery({
@@ -44,82 +53,127 @@ export default function AdminOrdersPage() {
 
   const actionMutation = useMutation({
     mutationFn: ({ orderId, endpoint }: { orderId: string; endpoint: string }) =>
-      api.patch(`/admin/orders/${orderId}/${endpoint}`, { estimatedMinutes: 20, reason: "No disponible" }),
+      api.patch(`/admin/orders/${orderId}/${endpoint}`, {
+        estimatedMinutes: 20,
+        reason: "No disponible",
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-active-orders"] }),
   });
 
-  const filtered = orders?.filter((o) => {
-    if (statusFilter === "active") return ["PENDING","ACCEPTED","PREPARING","READY"].includes(o.status);
-    if (statusFilter === "done") return ["DELIVERED","REJECTED","CANCELLED"].includes(o.status);
-    return true;
-  }) ?? [];
+  const filtered =
+    orders?.filter((o) => {
+      if (statusFilter === "active")
+        return ["PENDING", "ACCEPTED", "PREPARING", "READY"].includes(o.status);
+      if (statusFilter === "done")
+        return ["DELIVERED", "REJECTED", "CANCELLED"].includes(o.status);
+      return true;
+    }) ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Pedidos</h2>
-          <p className="text-sm text-muted-foreground">Gestiona los pedidos de tu restaurante</p>
+          <h2 className="text-h1 text-foreground">Pedidos</h2>
+          <p className="text-body-sm text-muted-foreground">
+            Gestiona los pedidos de tu restaurante
+          </p>
         </div>
         <BranchSelectorBar />
       </div>
 
-      <div className="flex gap-2">
-        {["active", "done", "all"].map((f) => (
-          <Button
+      <div
+        role="tablist"
+        aria-label="Filtrar pedidos"
+        className="inline-flex rounded-lg border border-border bg-surface p-1"
+      >
+        {(Object.keys(FILTER_LABEL) as StatusFilter[]).map((f) => (
+          <button
             key={f}
-            size="sm"
-            variant={statusFilter === f ? "default" : "outline"}
+            role="tab"
+            aria-selected={statusFilter === f}
             onClick={() => setStatusFilter(f)}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-body-sm font-medium transition-colors",
+              statusFilter === f
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
-            {{ active: "Activos", done: "Finalizados", all: "Todos" }[f]}
-          </Button>
+            {FILTER_LABEL[f]}
+          </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">{[1,2,3].map((i) => <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />)}</div>
+        <div className="space-y-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
       ) : filtered.length === 0 ? (
-        <p className="py-12 text-center text-muted-foreground">No hay pedidos en esta vista</p>
+        <EmptyState
+          illustration={<EmptyOrdersIllustration />}
+          title="Nada por aquí"
+          description={
+            statusFilter === "active"
+              ? "No hay pedidos activos en esta sede ahora mismo."
+              : statusFilter === "done"
+                ? "No hay pedidos finalizados en esta sede todavía."
+                : "Esta sede no tiene pedidos aún."
+          }
+        />
       ) : (
         <div className="space-y-3">
-          {filtered.map((order) => (
-            <Card key={order.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold">#{order.id.slice(0,8).toUpperCase()}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}>
-                        {STATUS_LABELS[order.status]}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {order.deliveryMode === "DELIVERY" ? "Delivery" : "Recogida"}
+          {filtered.map((order) => {
+            const ModeIcon = order.deliveryMode === "DELIVERY" ? Bike : ShoppingBag;
+            return (
+              <Card key={order.id}>
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-body font-semibold">
+                        #{order.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <Badge
+                        variant={ORDER_STATUS_VARIANT[order.status as OrderStatus]}
+                        dot
+                      >
+                        {ORDER_STATUS_LABEL[order.status as OrderStatus]}
+                      </Badge>
+                      <span className="inline-flex items-center gap-1 text-caption text-muted-foreground">
+                        <ModeIcon size={12} />
+                        {order.deliveryMode === "DELIVERY" ? "Domicilio" : "Recogida"}
                       </span>
                     </div>
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {order.items.map((i) => `${i.quantity}x ${i.dishName}`).join(", ")}
+                    <div className="text-body-sm text-muted-foreground line-clamp-2">
+                      {order.items.map((i) => `${i.quantity}× ${i.dishName}`).join(", ")}
                     </div>
-                    <p className="mt-1 text-sm font-semibold">{order.total.toFixed(2)} €</p>
+                    <p className="text-body font-semibold tabular-nums">
+                      {order.total.toFixed(2)} €
+                    </p>
                   </div>
-                  <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col">
                     {NEXT_ACTIONS[order.status as OrderStatus]?.map((action) => (
                       <Button
                         key={action.endpoint}
                         size="sm"
-                        variant={action.endpoint === "reject" ? "ghost" : "default"}
-                        className={action.endpoint === "reject" ? "text-destructive hover:text-destructive" : ""}
-                        onClick={() => actionMutation.mutate({ orderId: order.id, endpoint: action.endpoint })}
-                        disabled={actionMutation.isPending}
+                        variant={action.variant}
+                        loading={actionMutation.isPending}
+                        onClick={() =>
+                          actionMutation.mutate({
+                            orderId: order.id,
+                            endpoint: action.endpoint,
+                          })
+                        }
                       >
                         {action.label}
                       </Button>
                     ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

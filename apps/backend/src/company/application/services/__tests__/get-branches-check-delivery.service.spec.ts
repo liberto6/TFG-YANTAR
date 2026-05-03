@@ -14,9 +14,9 @@ const sevillePolygon = {
   ]],
 }
 
-const makeBranch = (id: string, companyId: string, name: string) =>
+const makeBranch = (id: string, companyId: string, name: string, slug?: string) =>
   Branch.restore({
-    id, companyId, name, address: 'Test 1', phone: null, email: null,
+    id, companyId, slug: slug ?? id, name, address: 'Test 1', phone: null, email: null,
     latitude: null, longitude: null,
     serviceModes: [ServiceMode.PICKUP, ServiceMode.DELIVERY],
     isActive: true, createdAt: new Date(), updatedAt: new Date(),

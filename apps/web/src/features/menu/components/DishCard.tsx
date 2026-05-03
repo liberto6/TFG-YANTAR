@@ -15,7 +15,7 @@ export function DishCard({ dish }: DishCardProps) {
     dish.variantGroups.length > 0 || dish.modifierGroups.length > 0;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden hover-lift">
       <CardContent className="p-0">
         <Link href={`/dish/${dish.id}`} className="flex gap-3 p-3">
           {dish.imageUrl && (
@@ -49,7 +49,7 @@ export function DishCard({ dish }: DishCardProps) {
                   Personalizar
                 </Button>
               ) : (
-                <Button size="sm">Anadir</Button>
+                <Button size="sm">Añadir</Button>
               )}
             </div>
           </div>

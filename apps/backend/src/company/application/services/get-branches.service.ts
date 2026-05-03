@@ -6,6 +6,7 @@ import { Branch } from '../../domain/entities/branch.entity'
 
 export interface BranchSummary {
   id: string
+  slug: string
   name: string
   address: string
   serviceModes: string[]
@@ -29,6 +30,7 @@ export class GetBranchesService {
       .filter((b: Branch) => b.isActive)
       .map((b: Branch) => ({
         id: b.id,
+        slug: b.slug,
         name: b.name,
         address: b.address,
         serviceModes: b.serviceModes,

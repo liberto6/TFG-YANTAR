@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useConfirm } from "@/lib/confirm-provider";
 import {
   useDeliveryZones,
   useCreateZone,
@@ -64,6 +65,7 @@ function ZoneCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
+  const confirm = useConfirm();
   const [form, setForm] = useState<ZoneFormState>({
     name: zone.name,
     postalCodes: zone.postalCodes.join(", "),
@@ -71,6 +73,17 @@ function ZoneCard({
     deliveryFee: String(zone.deliveryFee),
     estimatedTimeMinutes: String(zone.estimatedTimeMinutes),
   });
+
+  async function askDelete() {
+    const ok = await confirm({
+      title: `¿Eliminar la zona "${zone.name}"?`,
+      description:
+        "Las direcciones que cubría esta zona dejarán de poder pedir a domicilio en esta sede. La acción no se puede deshacer.",
+      confirmLabel: "Eliminar zona",
+      variant: "danger",
+    });
+    if (ok) onDelete(zone.id);
+  }
 
   const branchCenter: [number, number] | undefined =
     branch.latitude && branch.longitude
@@ -110,11 +123,8 @@ function ZoneCard({
             {expanded ? "Ocultar mapa" : "Ver mapa"}
           </button>
           <button
-            onClick={() => {
-              if (confirm(`¿Eliminar la zona "${zone.name}"?`))
-                onDelete(zone.id);
-            }}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+            onClick={askDelete}
+            className="rounded-lg border border-danger/30 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 transition-colors"
           >
             Eliminar
           </button>
@@ -321,7 +331,7 @@ export function DeliveryZonesSection({ branch }: Props) {
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="Zona Centro, Zona Norte..."
+                placeholder="Zona Centro, Zona Norte…"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
@@ -401,7 +411,7 @@ export function DeliveryZonesSection({ branch }: Props) {
             disabled={createZone.isPending}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {createZone.isPending ? "Creando..." : "Crear zona"}
+            {createZone.isPending ? "Creando…" : "Crear zona"}
           </button>
         </div>
       )}

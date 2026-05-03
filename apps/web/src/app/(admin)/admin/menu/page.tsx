@@ -1,31 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { FolderOpen, Plus } from "lucide-react";
 import { DishList } from "@/features/admin-menu/components/DishList";
 
 export default function AdminMenuPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Carta</h2>
-          <p className="text-sm text-muted-foreground">
-            Gestiona tus platos y categorias
+          <h2 className="text-h1 text-foreground">Carta</h2>
+          <p className="text-body-sm text-muted-foreground">
+            Gestiona tus platos y categorías
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/admin/menu/categories"
-            className="inline-flex h-10 items-center rounded-md border border-border bg-transparent px-4 text-sm font-medium text-foreground hover:bg-secondary"
+            className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border bg-transparent px-4 text-body-sm font-medium text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            Categorias
+            <FolderOpen size={16} /> Categorías
           </Link>
           <Link
             href="/admin/menu/new"
-            className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90"
+            className="inline-flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-body-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            + Nuevo plato
+            <Plus size={16} /> Nuevo plato
           </Link>
         </div>
       </div>

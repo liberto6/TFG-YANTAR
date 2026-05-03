@@ -5,6 +5,7 @@ describe('Branch', () => {
   const defaultProps = {
     id: 'b1',
     companyId: 'c1',
+    slug: 'main',
     name: 'Main Branch',
     address: '123 Main St',
     serviceModes: [ServiceMode.DELIVERY, ServiceMode.PICKUP],
@@ -93,6 +94,34 @@ describe('Branch', () => {
       expect(updated).not.toBe(branch)
       expect(updated.name).toBe('Updated Branch')
       expect(updated.address).toBe('123 Main St')
+      expect(updated.slug).toBe('main')
+    })
+
+    it('should normalize the slug when updated', () => {
+      const branch = Branch.create(defaultProps)
+      const updated = branch.update({ slug: 'Gran Vía  ' })
+
+      expect(updated.slug).toBe('gran-via')
+    })
+  })
+
+  describe('slug normalization', () => {
+    it('should accept a clean slug', () => {
+      const branch = Branch.create({ ...defaultProps, slug: 'centro' })
+      expect(branch.slug).toBe('centro')
+    })
+
+    it('should kebab-case spaces and strip accents', () => {
+      const branch = Branch.create({ ...defaultProps, slug: 'Plaza España' })
+      expect(branch.slug).toBe('plaza-espana')
+    })
+
+    it('should collapse repeated separators and trim edges', () => {
+      const branch = Branch.create({
+        ...defaultProps,
+        slug: '--Sede Norte!! ',
+      })
+      expect(branch.slug).toBe('sede-norte')
     })
   })
 
@@ -102,6 +131,7 @@ describe('Branch', () => {
       const branch = Branch.restore({
         id: 'b1',
         companyId: 'c1',
+        slug: 'restored',
         name: 'Restored',
         address: '456 Elm St',
         phone: '+34600000000',

@@ -44,7 +44,7 @@ describe("useCompanyConfig", () => {
     expect(result.current.data?.slug).toBe("napoli");
   });
 
-  it("calls the correct endpoint using NEXT_PUBLIC_COMPANY_SLUG", async () => {
+  it("calls the correct endpoint using the tenant slug from context", async () => {
     vi.mocked(api.get).mockResolvedValue(MOCK_CONFIG);
 
     const { result } = renderHook(() => useCompanyConfig());

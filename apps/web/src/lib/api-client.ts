@@ -4,6 +4,17 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("auth_token");
@@ -36,7 +47,11 @@ export async function apiClient<T = unknown>(
     const error = await response.json().catch(() => ({
       message: response.statusText,
     }));
-    throw new Error(error.message || `API error: ${response.status}`);
+    throw new ApiError(
+      error.message || `API error: ${response.status}`,
+      response.status,
+      error.code,
+    );
   }
 
   if (response.status === 204) {
@@ -73,7 +88,11 @@ export const api = {
     }).then(async (res) => {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message || `API error: ${res.status}`);
+        throw new ApiError(
+          err.message || `API error: ${res.status}`,
+          res.status,
+          err.code,
+        );
       }
       return res.json() as Promise<T>;
     });

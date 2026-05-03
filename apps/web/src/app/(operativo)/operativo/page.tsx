@@ -1,16 +1,26 @@
 "use client";
 
+import { Inbox } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CalmKitchenIllustration } from "@/components/illustrations";
+import { cn } from "@/lib/cn";
 import { useActiveOrders } from "@/features/operativo/hooks/use-active-orders";
 import { OrderKanbanCard } from "@/features/operativo/components/OrderKanbanCard";
 import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
 import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
-const COLUMNS: { status: OrderStatus; label: string; color: string }[] = [
-  { status: "PENDING", label: "Pendientes", color: "border-yellow-400" },
-  { status: "ACCEPTED", label: "Aceptados", color: "border-blue-400" },
-  { status: "PREPARING", label: "Preparando", color: "border-orange-400" },
-  { status: "READY", label: "Listos", color: "border-green-400" },
+const COLUMNS: {
+  status: OrderStatus;
+  label: string;
+  accentClass: string;
+  pulseOnNew?: boolean;
+}[] = [
+  { status: "PENDING", label: "Pendientes", accentClass: "bg-warning", pulseOnNew: true },
+  { status: "ACCEPTED", label: "Aceptados", accentClass: "bg-info" },
+  { status: "PREPARING", label: "Preparando", accentClass: "bg-primary" },
+  { status: "READY", label: "Listos", accentClass: "bg-success" },
 ];
 
 export default function OperativoPage() {
@@ -19,15 +29,20 @@ export default function OperativoPage() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-4 gap-4">
-        {COLUMNS.map((col) => (
-          <div key={col.status} className="space-y-3">
-            <div className="h-6 w-24 animate-pulse rounded bg-muted" />
-            {[1, 2].map((i) => (
-              <div key={i} className="h-40 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-        ))}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {COLUMNS.map((col) => (
+            <div key={col.status} className="space-y-3">
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -35,36 +50,66 @@ export default function OperativoPage() {
   const ordersByStatus = (status: OrderStatus): Order[] =>
     (orders ?? []).filter((o) => o.status === status);
 
+  const totalActive = (orders ?? []).length;
+
+  if (totalActive === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-h2 text-foreground">En curso</h2>
+          <BranchSelectorBar />
+        </div>
+        <EmptyState
+          illustration={<CalmKitchenIllustration />}
+          title="Cocina tranquila por ahora"
+          description="Los nuevos pedidos aparecerán aquí en tiempo real. Aprovecha para descansar o preparar mise en place."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-foreground">Vista operativa</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-h2 text-foreground">En curso</h2>
+          <span className="text-body-sm text-muted-foreground">
+            {totalActive} {totalActive === 1 ? "pedido activo" : "pedidos activos"}
+          </span>
+        </div>
         <BranchSelectorBar />
       </div>
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {COLUMNS.map((col) => {
-        const colOrders = ordersByStatus(col.status);
-        return (
-          <div key={col.status} className="space-y-3">
-            <div className={`flex items-center gap-2 border-b-2 pb-2 ${col.color}`}>
-              <h2 className="text-sm font-semibold text-foreground">{col.label}</h2>
-              {colOrders.length > 0 && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {COLUMNS.map((col) => {
+          const colOrders = ordersByStatus(col.status);
+          const hasNew = col.pulseOnNew && colOrders.length > 0;
+          return (
+            <div key={col.status} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className={cn("h-2.5 w-2.5 rounded-full", col.accentClass, hasNew && "animate-pulse-soft")} />
+                <h3 className="text-body font-semibold text-foreground">{col.label}</h3>
+                <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-caption font-medium text-muted-foreground">
                   {colOrders.length}
                 </span>
+              </div>
+
+              {colOrders.length === 0 ? (
+                <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border py-6 text-center">
+                  <Inbox size={18} className="text-muted-foreground" />
+                  <p className="text-caption text-muted-foreground">Sin pedidos</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {colOrders.map((order) => (
+                    <OrderKanbanCard key={order.id} order={order} />
+                  ))}
+                </div>
               )}
             </div>
-            {colOrders.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">Sin pedidos</p>
-            ) : (
-              colOrders.map((order) => (
-                <OrderKanbanCard key={order.id} order={order} />
-              ))
-            )}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

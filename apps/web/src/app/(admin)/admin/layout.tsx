@@ -2,34 +2,106 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Building2,
+  ClipboardList,
+  Heart,
+  LayoutGrid,
+  LogOut,
+  Menu as MenuIcon,
+  Settings,
+  UtensilsCrossed,
+  X,
+} from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/features/auth/hooks/use-auth";
+import { cn } from "@/lib/cn";
 
 const sidebarLinks = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "grid" },
-  { href: "/admin/menu", label: "Carta", icon: "utensils" },
-  { href: "/admin/branches", label: "Sedes", icon: "building" },
-  { href: "/admin/orders", label: "Pedidos", icon: "orders" },
-  { href: "/admin/loyalty", label: "Fidelizacion", icon: "heart" },
-  { href: "/admin/settings", label: "Configuracion", icon: "settings" },
+  { href: "/admin/dashboard", label: "Dashboard", Icon: LayoutGrid },
+  { href: "/admin/menu", label: "Carta", Icon: UtensilsCrossed },
+  { href: "/admin/branches", label: "Sedes", Icon: Building2 },
+  { href: "/admin/orders", label: "Pedidos", Icon: ClipboardList },
+  { href: "/admin/loyalty", label: "Fidelización", Icon: Heart },
+  { href: "/admin/settings", label: "Configuración", Icon: Settings },
 ];
 
-function SidebarIcon({ name }: { name: string }) {
-  const icons: Record<string, ReactNode> = {
-    grid: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>),
-    utensils: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.379a48.474 48.474 0 00-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265z" /></svg>),
-    building: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>),
-    orders: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>),
-    heart: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>),
-    settings: (<svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>),
-  };
-  return <>{icons[name] ?? null}</>;
+function pageTitle(pathname: string): string {
+  const match = sidebarLinks.find((l) => pathname.startsWith(l.href));
+  return match?.label ?? "Panel de Administración";
+}
+
+interface SidebarBodyProps {
+  pathname: string;
+  user: { displayName?: string | null; email?: string | null } | null;
+  onLogout: () => void;
+  onLinkClick?: () => void;
+}
+
+function SidebarBody({ pathname, user, onLogout, onLinkClick }: SidebarBodyProps) {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center border-b border-border px-6">
+        <Link
+          href="/admin/dashboard"
+          onClick={onLinkClick}
+          className="text-h3 font-bold text-primary"
+        >
+          Yantar Admin
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Sidebar">
+        {sidebarLinks.map(({ href, label, Icon }) => {
+          const isActive = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onLinkClick}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2.5 text-body-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon size={18} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="space-y-2 border-t border-border p-3">
+        <div className="flex items-center gap-3 rounded-md px-3 py-2">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-body-sm font-medium text-primary-foreground">
+            {user?.displayName?.[0]?.toUpperCase() ?? "A"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body-sm font-medium text-foreground">
+              {user?.displayName ?? "Admin"}
+            </p>
+            <p className="truncate text-caption text-muted-foreground">{user?.email}</p>
+          </div>
+        </div>
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-body-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <LogOut size={16} />
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || user?.role === "CUSTOMER")) {
@@ -37,54 +109,78 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, user, router]);
 
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [mobileOpen]);
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center gap-2 text-muted-foreground">
+        <Spinner size={18} />
+        <span className="text-body-sm">Cargando…</span>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido
+      </a>
       <aside className="hidden w-64 shrink-0 border-r border-border bg-surface lg:block">
-        <div className="flex h-full flex-col">
-          <div className="flex h-16 items-center border-b border-border px-6">
-            <Link href="/admin/dashboard" className="text-xl font-bold text-primary">
-              Yantar Admin
-            </Link>
-          </div>
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {sidebarLinks.map((link) => {
-              const isActive = pathname.startsWith(link.href);
-              return (
-                <Link key={link.label} href={link.href}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-primary text-white" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
-                >
-                  <SidebarIcon name={link.icon} />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="border-t border-border p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-white">
-                {user?.displayName?.[0]?.toUpperCase() ?? "A"}
-              </div>
-              <div className="flex-1 truncate">
-                <p className="text-sm font-medium text-foreground">{user?.displayName ?? "Admin"}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SidebarBody pathname={pathname} user={user ?? null} onLogout={handleLogout} />
       </aside>
+
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 animate-fade-in bg-black/40 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] animate-slide-in-right border-r border-border bg-surface lg:hidden"
+            style={{ animationDirection: "reverse" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menú lateral"
+          >
+            <SidebarBody
+              pathname={pathname}
+              user={user ?? null}
+              onLogout={handleLogout}
+              onLinkClick={() => setMobileOpen(false)}
+            />
+          </aside>
+        </>
+      )}
+
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center border-b border-border bg-background px-6">
-          <h1 className="text-lg font-semibold text-foreground">Panel de Administracion</h1>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 sm:px-6">
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Abrir menú"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground lg:hidden"
+          >
+            <MenuIcon size={20} />
+          </button>
+          <h1 className="text-h3 text-foreground">{pageTitle(pathname)}</h1>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

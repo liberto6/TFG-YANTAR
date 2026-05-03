@@ -2,7 +2,11 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { Check, Circle } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/cn";
 import { useOrderStatus } from "@/features/orders/hooks/use-order-status";
 import type { OrderStatus } from "@/features/orders/types/order.types";
 
@@ -17,7 +21,7 @@ const STATUS_STEPS: OrderStatus[] = [
 const STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: "Recibido",
   ACCEPTED: "Aceptado",
-  PREPARING: "En preparacion",
+  PREPARING: "En preparación",
   READY: "Listo para recoger",
   DELIVERED: "Entregado",
   REJECTED: "Rechazado",
@@ -25,11 +29,11 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 const STATUS_DESCRIPTION: Record<OrderStatus, string> = {
-  PENDING: "Tu pedido esta esperando confirmacion del restaurante.",
+  PENDING: "Tu pedido está esperando confirmación del restaurante.",
   ACCEPTED: "El restaurante ha aceptado tu pedido.",
-  PREPARING: "El equipo esta preparando tu pedido.",
-  READY: "Tu pedido esta listo.",
-  DELIVERED: "Pedido completado. Gracias!",
+  PREPARING: "El equipo está preparando tu pedido.",
+  READY: "Tu pedido está listo.",
+  DELIVERED: "Pedido completado. ¡Gracias!",
   REJECTED: "El restaurante no pudo aceptar tu pedido.",
   CANCELLED: "Este pedido ha sido cancelado.",
 };
@@ -40,42 +44,57 @@ function OrderTracker({ status }: { status: OrderStatus }) {
 
   if (isTerminal) {
     return (
-      <div className="rounded-lg bg-red-50 px-4 py-3 text-center">
-        <p className="font-semibold text-red-700">{STATUS_LABEL[status]}</p>
-        <p className="text-sm text-red-600">{STATUS_DESCRIPTION[status]}</p>
-      </div>
+      <Alert variant="danger" heading={STATUS_LABEL[status]}>
+        {STATUS_DESCRIPTION[status]}
+      </Alert>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between">
+    <div className="space-y-4">
+      <div className="flex items-start">
         {STATUS_STEPS.map((step, i) => {
           const isCompleted = i <= currentIndex;
+          const isCurrent = i === currentIndex;
+          const isLast = i === STATUS_STEPS.length - 1;
+
           return (
-            <div key={step} className="flex flex-1 flex-col items-center gap-1">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                  isCompleted
-                    ? "bg-primary text-white"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isCompleted ? "✓" : i + 1}
+            <div key={step} className="flex flex-1 items-start">
+              <div className="flex flex-1 flex-col items-center gap-1.5">
+                <div
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors",
+                    isCompleted
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground",
+                    isCurrent && "ring-4 ring-primary/20",
+                  )}
+                >
+                  {isCompleted ? <Check size={16} /> : <Circle size={10} />}
+                </div>
+                <span
+                  className={cn(
+                    "text-center text-caption leading-tight",
+                    isCompleted ? "font-medium text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {STATUS_LABEL[step]}
+                </span>
               </div>
-              <span
-                className={`text-center text-[10px] leading-tight ${
-                  isCompleted ? "text-primary font-medium" : "text-muted-foreground"
-                }`}
-              >
-                {STATUS_LABEL[step]}
-              </span>
+              {!isLast && (
+                <div
+                  className={cn(
+                    "mt-4 h-0.5 flex-1 transition-colors",
+                    i < currentIndex ? "bg-primary" : "bg-muted",
+                  )}
+                />
+              )}
             </div>
           );
         })}
       </div>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-body-sm text-muted-foreground">
         {STATUS_DESCRIPTION[status]}
       </p>
     </div>
@@ -89,21 +108,19 @@ export default function OrderDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-24 animate-pulse rounded-lg bg-muted" />
-        <div className="h-48 animate-pulse rounded-lg bg-muted" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-48" />
       </div>
     );
   }
 
   if (isError || !order) {
     return (
-      <div className="py-12 text-center space-y-4">
-        <p className="text-muted-foreground">
-          No se pudo cargar el pedido.
-        </p>
+      <div className="space-y-4 py-12 text-center">
+        <p className="text-body-sm text-muted-foreground">No se pudo cargar el pedido.</p>
         <Link
           href="/menu"
-          className="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-transparent px-4 text-body-sm font-medium text-foreground transition-colors hover:bg-secondary"
         >
           Volver a la carta
         </Link>
@@ -114,18 +131,17 @@ export default function OrderDetailPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">Tu pedido</h1>
-        <span className="text-xs text-muted-foreground">
+        <h1 className="text-h1 text-foreground">Tu pedido</h1>
+        <span className="text-caption text-muted-foreground">
           #{order.id.slice(0, 8).toUpperCase()}
         </span>
       </div>
 
-      {/* Status tracker */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-3 pt-4">
           <OrderTracker status={order.status} />
           {order.scheduledTime && (
-            <p className="mt-3 text-center text-sm text-muted-foreground">
+            <p className="text-center text-body-sm text-muted-foreground">
               Hora programada:{" "}
               <span className="font-medium text-foreground">
                 {new Date(order.scheduledTime).toLocaleTimeString("es-ES", {
@@ -136,60 +152,57 @@ export default function OrderDetailPage() {
             </p>
           )}
           {order.estimatedMinutes && (
-            <p className="mt-1 text-center text-sm font-medium text-foreground">
+            <p className="text-center text-body-sm font-medium text-foreground">
               Tiempo estimado: {order.estimatedMinutes} min
             </p>
           )}
           {order.rejectionReason && (
-            <p className="mt-2 text-center text-sm text-red-600">
+            <p className="text-center text-body-sm text-danger">
               Motivo: {order.rejectionReason}
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Items */}
       <Card>
         <CardHeader className="pb-2">
-          <h2 className="font-medium text-foreground">Detalle del pedido</h2>
+          <h2 className="text-h3 text-foreground">Detalle del pedido</h2>
         </CardHeader>
         <CardContent className="divide-y divide-border">
           {order.items.map((item) => (
-            <div key={item.id} className="py-2">
-              <div className="flex justify-between text-sm">
+            <div key={item.id} className="py-2 first:pt-0 last:pb-0">
+              <div className="flex justify-between text-body-sm">
                 <span className="font-medium">
-                  {item.quantity}x {item.dishName}
+                  <span className="text-muted-foreground">{item.quantity}×</span> {item.dishName}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground tabular-nums">
                   {item.lineTotal.toFixed(2)} €
                 </span>
               </div>
               {item.selectedVariant && (
-                <p className="text-xs text-muted-foreground">
-                  {item.selectedVariant}
-                </p>
+                <p className="text-caption text-muted-foreground">{item.selectedVariant}</p>
               )}
               {item.selectedModifiers.length > 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   + {item.selectedModifiers.map((m) => m.name).join(", ")}
                 </p>
               )}
             </div>
           ))}
-          <div className="pt-2 space-y-1">
-            <div className="flex justify-between text-sm text-muted-foreground">
+          <div className="space-y-1 pt-3">
+            <div className="flex justify-between text-body-sm text-muted-foreground">
               <span>Subtotal</span>
-              <span>{order.subtotal.toFixed(2)} €</span>
+              <span className="tabular-nums">{order.subtotal.toFixed(2)} €</span>
             </div>
             {order.deliveryFee > 0 && (
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Envio</span>
-                <span>{order.deliveryFee.toFixed(2)} €</span>
+              <div className="flex justify-between text-body-sm text-muted-foreground">
+                <span>Envío</span>
+                <span className="tabular-nums">{order.deliveryFee.toFixed(2)} €</span>
               </div>
             )}
-            <div className="flex justify-between font-semibold">
+            <div className="flex justify-between pt-1 text-body font-semibold">
               <span>Total</span>
-              <span className="text-primary">{order.total.toFixed(2)} €</span>
+              <span className="text-primary tabular-nums">{order.total.toFixed(2)} €</span>
             </div>
           </div>
         </CardContent>
@@ -197,7 +210,7 @@ export default function OrderDetailPage() {
 
       <Link
         href="/menu"
-        className="inline-flex w-full items-center justify-center rounded-md border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+        className="inline-flex h-10 w-full items-center justify-center rounded-md border border-border bg-transparent px-4 text-body-sm font-medium text-foreground transition-colors hover:bg-secondary"
       >
         Seguir pidiendo
       </Link>

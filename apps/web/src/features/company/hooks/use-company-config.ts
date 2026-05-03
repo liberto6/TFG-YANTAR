@@ -2,8 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-
-const COMPANY_SLUG = process.env.NEXT_PUBLIC_COMPANY_SLUG!;
+import { useTenantSlug } from "@/features/tenant/context/tenant-context";
 
 export interface CompanyConfig {
   id: string;
@@ -22,14 +21,15 @@ export interface CompanyConfig {
 }
 
 /**
- * Fetches company config using the public slug.
- * Cached indefinitely for the session — config changes are rare.
- * Provides companyId without needing NEXT_PUBLIC_COMPANY_ID env var.
+ * Carga la configuración pública de la empresa a partir del slug del tenant
+ * actual (resuelto por el middleware en runtime). Se cachea indefinidamente
+ * dentro de la sesión porque la configuración cambia raras veces.
  */
 export function useCompanyConfig() {
+  const slug = useTenantSlug();
   return useQuery<CompanyConfig>({
-    queryKey: ["company-config", COMPANY_SLUG],
-    queryFn: () => api.get<CompanyConfig>(`/companies/${COMPANY_SLUG}/config`),
+    queryKey: ["company-config", slug],
+    queryFn: () => api.get<CompanyConfig>(`/companies/${slug}/config`),
     staleTime: Infinity,
     gcTime: Infinity,
   });

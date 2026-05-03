@@ -1,7 +1,8 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-
-const COMPANY_SLUG = process.env.NEXT_PUBLIC_COMPANY_SLUG!;
+import { useTenantSlug } from "@/features/tenant/context/tenant-context";
 
 export interface TimeSlot {
   label: string;
@@ -18,13 +19,14 @@ function todayDateStr(): string {
 }
 
 export function useTimeSlots(branchId: string, date?: string) {
+  const companySlug = useTenantSlug();
   const targetDate = date ?? todayDateStr();
 
   return useQuery<TimeSlotsResponse>({
-    queryKey: ["time-slots", branchId, targetDate],
+    queryKey: ["time-slots", companySlug, branchId, targetDate],
     queryFn: () =>
       api.get<TimeSlotsResponse>(
-        `/companies/${COMPANY_SLUG}/branches/${branchId}/slots?date=${targetDate}`,
+        `/companies/${companySlug}/branches/${branchId}/slots?date=${targetDate}`,
       ),
     staleTime: 5 * 60 * 1000, // 5 min
   });

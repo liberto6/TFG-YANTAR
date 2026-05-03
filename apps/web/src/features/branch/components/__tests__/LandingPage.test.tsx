@@ -85,7 +85,7 @@ describe("LandingPage", () => {
 
     const { container } = render(<LandingPage {...DEFAULT_PROPS} />);
 
-    expect(container.querySelectorAll(".animate-pulse")).toHaveLength(2);
+    expect(container.querySelectorAll(".shimmer")).toHaveLength(2);
   });
 
   it("moves to mode step when a branch is clicked", async () => {

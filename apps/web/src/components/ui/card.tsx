@@ -1,10 +1,19 @@
 import { forwardRef, type HTMLAttributes } from "react";
+import { cn } from "@/lib/cn";
 
-const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className = "", ...props }, ref) => (
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  interactive?: boolean;
+}
+
+const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className = "", interactive, ...props }, ref) => (
     <div
       ref={ref}
-      className={`rounded-lg border border-border bg-surface shadow-sm ${className}`}
+      className={cn(
+        "rounded-lg border border-border bg-surface shadow-sm",
+        interactive && "hover-lift cursor-pointer",
+        className,
+      )}
       {...props}
     />
   ),
@@ -15,7 +24,7 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className = "", ...props }, ref) => (
     <div
       ref={ref}
-      className={`flex flex-col space-y-1.5 p-6 ${className}`}
+      className={cn("flex flex-col space-y-1.5 p-6", className)}
       {...props}
     />
   ),
@@ -24,7 +33,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className = "", ...props }, ref) => (
-    <div ref={ref} className={`p-6 pt-0 ${className}`} {...props} />
+    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
   ),
 );
 CardContent.displayName = "CardContent";
@@ -33,7 +42,7 @@ const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className = "", ...props }, ref) => (
     <div
       ref={ref}
-      className={`flex items-center p-6 pt-0 ${className}`}
+      className={cn("flex items-center p-6 pt-0", className)}
       {...props}
     />
   ),

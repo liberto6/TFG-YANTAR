@@ -3,6 +3,7 @@ import { ServiceMode } from '@yantar/shared'
 export class Branch {
   readonly id: string
   readonly companyId: string
+  readonly slug: string
   readonly name: string
   readonly address: string
   readonly phone: string | null
@@ -17,6 +18,7 @@ export class Branch {
   private constructor(props: {
     id: string
     companyId: string
+    slug: string
     name: string
     address: string
     phone: string | null
@@ -30,6 +32,7 @@ export class Branch {
   }) {
     this.id = props.id
     this.companyId = props.companyId
+    this.slug = props.slug
     this.name = props.name
     this.address = props.address
     this.phone = props.phone
@@ -45,6 +48,7 @@ export class Branch {
   static create(props: {
     id: string
     companyId: string
+    slug: string
     name: string
     address: string
     phone?: string | null
@@ -57,6 +61,7 @@ export class Branch {
     return new Branch({
       id: props.id,
       companyId: props.companyId,
+      slug: Branch.normalizeSlug(props.slug),
       name: props.name,
       address: props.address,
       phone: props.phone ?? null,
@@ -73,6 +78,7 @@ export class Branch {
   static restore(props: {
     id: string
     companyId: string
+    slug: string
     name: string
     address: string
     phone: string | null
@@ -116,6 +122,7 @@ export class Branch {
   }
 
   update(changes: {
+    slug?: string
     name?: string
     address?: string
     phone?: string | null
@@ -127,6 +134,10 @@ export class Branch {
     return new Branch({
       id: this.id,
       companyId: this.companyId,
+      slug:
+        changes.slug !== undefined
+          ? Branch.normalizeSlug(changes.slug)
+          : this.slug,
       name: changes.name !== undefined ? changes.name : this.name,
       address: changes.address !== undefined ? changes.address : this.address,
       phone: changes.phone !== undefined ? changes.phone : this.phone,
@@ -145,10 +156,24 @@ export class Branch {
     })
   }
 
+  /**
+   * Normaliza un slug a kebab-case ASCII (acentos eliminados, espacios a guiones,
+   * caracteres no [a-z0-9-] descartados, guiones colapsados, sin guiones a los lados).
+   */
+  static normalizeSlug(input: string): string {
+    return input
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
   private toProps() {
     return {
       id: this.id,
       companyId: this.companyId,
+      slug: this.slug,
       name: this.name,
       address: this.address,
       phone: this.phone,

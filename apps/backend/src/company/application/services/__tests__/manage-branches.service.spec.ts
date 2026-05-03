@@ -2,9 +2,11 @@ import { ServiceMode } from '@yantar/shared'
 import { ManageBranchesService } from '../manage-branches.service'
 import { Branch } from '../../../domain/entities/branch.entity'
 import { BranchNotFoundError } from '../../../domain/errors/branch-not-found.error'
+import { SlugAlreadyTakenError } from '../../../domain/errors/slug-already-taken.error'
 
 const mockBranchRepository = {
   findById: jest.fn(),
+  findBySlug: jest.fn(),
   findByCompanyId: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
@@ -15,11 +17,12 @@ describe('ManageBranchesService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    mockBranchRepository.findBySlug.mockResolvedValue(null)
     service = new ManageBranchesService(mockBranchRepository)
   })
 
   describe('createBranch', () => {
-    it('should create and save a new branch', async () => {
+    it('should create and save a new branch deriving slug from name', async () => {
       mockBranchRepository.save.mockImplementation(async (b: Branch) => b)
 
       const result = await service.createBranch('company-1', {
@@ -30,10 +33,38 @@ describe('ManageBranchesService', () => {
       })
 
       expect(result.name).toBe('Downtown')
+      expect(result.slug).toBe('downtown')
       expect(result.address).toBe('123 Main St')
       expect(result.companyId).toBe('company-1')
-      expect(result.serviceModes).toEqual([ServiceMode.PICKUP, ServiceMode.DELIVERY])
       expect(mockBranchRepository.save).toHaveBeenCalledTimes(1)
+    })
+
+    it('should accept an explicit slug', async () => {
+      mockBranchRepository.save.mockImplementation(async (b: Branch) => b)
+
+      const result = await service.createBranch('company-1', {
+        slug: 'gran-via',
+        name: 'Sede Gran Vía',
+        address: 'Gran Vía 1',
+        serviceModes: [ServiceMode.PICKUP],
+      })
+
+      expect(result.slug).toBe('gran-via')
+    })
+
+    it('should suffix the slug if base is already taken in the company', async () => {
+      mockBranchRepository.findBySlug
+        .mockResolvedValueOnce({} as Branch)
+        .mockResolvedValueOnce(null)
+      mockBranchRepository.save.mockImplementation(async (b: Branch) => b)
+
+      const result = await service.createBranch('company-1', {
+        name: 'Centro',
+        address: 'Calle Mayor 1',
+        serviceModes: [ServiceMode.PICKUP],
+      })
+
+      expect(result.slug).toBe('centro-2')
     })
   })
 
@@ -42,6 +73,7 @@ describe('ManageBranchesService', () => {
       const existing = Branch.create({
         id: 'branch-1',
         companyId: 'company-1',
+        slug: 'downtown',
         name: 'Downtown',
         address: '123 Main St',
         serviceModes: [ServiceMode.PICKUP],
@@ -58,6 +90,54 @@ describe('ManageBranchesService', () => {
       expect(result.name).toBe('Uptown')
       expect(result.serviceModes).toEqual([ServiceMode.PICKUP, ServiceMode.DELIVERY])
       expect(result.address).toBe('123 Main St')
+      expect(result.slug).toBe('downtown')
+    })
+
+    it('should accept a slug change when not taken', async () => {
+      const existing = Branch.create({
+        id: 'branch-1',
+        companyId: 'company-1',
+        slug: 'downtown',
+        name: 'Downtown',
+        address: '123 Main St',
+        serviceModes: [ServiceMode.PICKUP],
+      })
+
+      mockBranchRepository.findById.mockResolvedValue(existing)
+      mockBranchRepository.findBySlug.mockResolvedValue(null)
+      mockBranchRepository.save.mockImplementation(async (b: Branch) => b)
+
+      const result = await service.updateBranch('company-1', 'branch-1', {
+        slug: 'uptown',
+      })
+
+      expect(result.slug).toBe('uptown')
+    })
+
+    it('should throw SlugAlreadyTakenError if a different branch owns the slug', async () => {
+      const existing = Branch.create({
+        id: 'branch-1',
+        companyId: 'company-1',
+        slug: 'downtown',
+        name: 'Downtown',
+        address: '123 Main St',
+        serviceModes: [ServiceMode.PICKUP],
+      })
+      const collision = Branch.create({
+        id: 'branch-2',
+        companyId: 'company-1',
+        slug: 'uptown',
+        name: 'Uptown',
+        address: '999 Oak',
+        serviceModes: [ServiceMode.PICKUP],
+      })
+
+      mockBranchRepository.findById.mockResolvedValue(existing)
+      mockBranchRepository.findBySlug.mockResolvedValue(collision)
+
+      await expect(
+        service.updateBranch('company-1', 'branch-1', { slug: 'uptown' }),
+      ).rejects.toThrow(SlugAlreadyTakenError)
     })
 
     it('should throw BranchNotFoundError when branch does not exist', async () => {
@@ -74,6 +154,7 @@ describe('ManageBranchesService', () => {
       const existing = Branch.create({
         id: 'branch-1',
         companyId: 'company-1',
+        slug: 'downtown',
         name: 'Downtown',
         address: '123 Main St',
         serviceModes: [ServiceMode.PICKUP],
@@ -102,6 +183,7 @@ describe('ManageBranchesService', () => {
         Branch.create({
           id: 'branch-1',
           companyId: 'company-1',
+          slug: 'downtown',
           name: 'Downtown',
           address: '123 Main St',
           serviceModes: [ServiceMode.PICKUP],
@@ -109,6 +191,7 @@ describe('ManageBranchesService', () => {
         Branch.create({
           id: 'branch-2',
           companyId: 'company-1',
+          slug: 'uptown',
           name: 'Uptown',
           address: '456 Oak Ave',
           serviceModes: [ServiceMode.DELIVERY],

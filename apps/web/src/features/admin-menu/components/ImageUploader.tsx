@@ -57,7 +57,7 @@ export function ImageUploader({ value, onChange }: Props) {
           onClick={() => inputRef.current?.click()}
           className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
         >
-          {isUploading ? "Subiendo..." : "Seleccionar imagen"}
+          {isUploading ? "Subiendo…" : "Seleccionar imagen"}
         </button>
 
         {value && (

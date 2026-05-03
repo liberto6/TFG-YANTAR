@@ -10,6 +10,8 @@ import { ManageOperatingHoursService } from './application/services/manage-opera
 import { ManageDeliveryZonesService } from './application/services/manage-delivery-zones.service'
 import { GetTimeSlotsService } from './application/services/get-time-slots.service'
 import { GetBranchesService } from './application/services/get-branches.service'
+import { GetBranchBySlugService } from './application/services/get-branch-by-slug.service'
+import { ResolveTenantService } from './application/services/resolve-tenant.service'
 import { CheckDeliveryService } from './application/services/check-delivery.service'
 import { PrismaCompanyRepository } from './infrastructure/repositories/prisma-company.repository'
 import { PrismaBranchRepository } from './infrastructure/repositories/prisma-branch.repository'
@@ -29,7 +31,13 @@ import { AdminGuard } from '../shared/infrastructure/guards/admin.guard'
     ManageDeliveryZonesService,
     GetTimeSlotsService,
     GetBranchesService,
+    GetBranchBySlugService,
+    ResolveTenantService,
     CheckDeliveryService,
+    {
+      provide: 'YANTAR_ROOT_DOMAIN',
+      useFactory: () => process.env.YANTAR_ROOT_DOMAIN ?? 'yantar.app',
+    },
     {
       provide: 'ICompanyRepository',
       useClass: PrismaCompanyRepository,

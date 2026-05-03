@@ -16,6 +16,14 @@ export class PrismaBranchRepository implements IBranchRepository {
     return record ? this.toDomain(record) : null
   }
 
+  async findBySlug(slug: string, companyId: string): Promise<Branch | null> {
+    const record = await this.prisma.branch.findFirst({
+      where: { slug, companyId },
+      include: { operatingHours: true },
+    })
+    return record ? this.toDomain(record) : null
+  }
+
   async findByCompanyId(companyId: string): Promise<Branch[]> {
     const records = await this.prisma.branch.findMany({
       where: { companyId },
@@ -44,6 +52,7 @@ export class PrismaBranchRepository implements IBranchRepository {
   private toDomain(record: {
     id: string
     companyId: string
+    slug: string
     name: string
     address: string
     phone: string | null
@@ -58,6 +67,7 @@ export class PrismaBranchRepository implements IBranchRepository {
     return Branch.restore({
       id: record.id,
       companyId: record.companyId,
+      slug: record.slug,
       name: record.name,
       address: record.address,
       phone: record.phone,
@@ -75,6 +85,7 @@ export class PrismaBranchRepository implements IBranchRepository {
     return {
       id: branch.id,
       companyId: branch.companyId,
+      slug: branch.slug,
       name: branch.name,
       address: branch.address,
       phone: branch.phone,

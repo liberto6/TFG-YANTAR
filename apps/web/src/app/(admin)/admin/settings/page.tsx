@@ -1,73 +1,102 @@
 "use client";
 
 import Link from "next/link";
+import {
+  Building2,
+  ChevronRight,
+  Palette,
+  Store,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCompanyConfig } from "@/features/admin-company/hooks/use-branding";
+
+interface SettingTileProps {
+  href: string;
+  Icon: LucideIcon;
+  iconClass: string;
+  title: string;
+  description: string;
+}
+
+function SettingTile({ href, Icon, iconClass, title, description }: SettingTileProps) {
+  return (
+    <Link href={href} className="block">
+      <Card className="transition-all hover:border-primary/40 hover:shadow-sm">
+        <CardContent className="flex items-center gap-4 p-4">
+          <span
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconClass}`}
+          >
+            <Icon size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-body font-medium text-foreground">{title}</p>
+            <p className="text-body-sm text-muted-foreground">{description}</p>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-muted-foreground" />
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 export default function SettingsPage() {
   const { data: config, isLoading } = useCompanyConfig();
 
   if (isLoading) {
-    return <div className="h-40 animate-pulse rounded-lg bg-muted" />;
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Configuración</h2>
-        <p className="text-sm text-muted-foreground">Ajustes generales de tu restaurante</p>
+        <h2 className="text-h1 text-foreground">Configuración</h2>
+        <p className="text-body-sm text-muted-foreground">
+          Ajustes generales de tu restaurante
+        </p>
       </div>
 
-      <div className="grid gap-4 max-w-2xl">
+      <div className="grid max-w-2xl gap-3">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Datos del restaurante</p>
-                <p className="text-sm text-muted-foreground">
-                  {config?.name} · {config?.slug}
-                </p>
-              </div>
-              <span className="text-sm text-muted-foreground">Solo editable desde registro</span>
+          <CardContent className="flex items-center gap-4 p-4">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <Store size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-body font-medium text-foreground">Datos del restaurante</p>
+              <p className="truncate text-body-sm text-muted-foreground">
+                {config?.name} · /{config?.slug}
+              </p>
             </div>
+            <span className="hidden text-caption text-muted-foreground sm:block">
+              Solo editable desde registro
+            </span>
           </CardContent>
         </Card>
 
-        <Link href="/admin/settings/branding">
-          <Card className="cursor-pointer transition-colors hover:bg-secondary/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Branding</p>
-                  <p className="text-sm text-muted-foreground">
-                    Logo, colores y textos de tu web de pedidos
-                  </p>
-                </div>
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+        <SettingTile
+          href="/admin/settings/branding"
+          Icon={Palette}
+          iconClass="bg-accent/10 text-accent"
+          title="Branding"
+          description="Logo, colores y textos de tu web de pedidos"
+        />
 
-        <Link href="/admin/branches">
-          <Card className="cursor-pointer transition-colors hover:bg-secondary/50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">Sedes y horarios</p>
-                  <p className="text-sm text-muted-foreground">
-                    Gestiona tus ubicaciones y horarios de apertura
-                  </p>
-                </div>
-                <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+        <SettingTile
+          href="/admin/branches"
+          Icon={Building2}
+          iconClass="bg-primary/10 text-primary"
+          title="Sedes y horarios"
+          description="Gestiona tus ubicaciones y horarios de apertura"
+        />
       </div>
     </div>
   );

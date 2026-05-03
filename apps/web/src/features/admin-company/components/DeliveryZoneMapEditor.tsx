@@ -161,7 +161,7 @@ export function DeliveryZoneMapEditor({
             disabled={isSaving}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {isSaving ? "Guardando..." : "Guardar zona en mapa"}
+            {isSaving ? "Guardando…" : "Guardar zona en mapa"}
           </button>
         ) : (
           existingPolygon && (

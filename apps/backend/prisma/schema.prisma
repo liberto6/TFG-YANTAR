@@ -73,6 +73,7 @@ model Company {
 model Branch {
   id           String        @id @default(uuid())
   companyId    String        @map("company_id")
+  slug         String
   name         String
   address      String
   phone        String?
@@ -89,6 +90,7 @@ model Branch {
   deliveryZones  DeliveryZone[]
   orders         Order[]
 
+  @@unique([companyId, slug])
   @@map("branches")
 }
 

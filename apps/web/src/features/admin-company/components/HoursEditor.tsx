@@ -93,7 +93,7 @@ export function HoursEditor({ branchId }: HoursEditorProps) {
         ))}
         <div className="flex items-center gap-3 pt-2">
           <Button onClick={handleSave} disabled={setHoursMutation.isPending} size="sm">
-            {setHoursMutation.isPending ? "Guardando..." : "Guardar horarios"}
+            {setHoursMutation.isPending ? "Guardando…" : "Guardar horarios"}
           </Button>
           {saved && <span className="text-sm text-green-600">Guardado</span>}
         </div>

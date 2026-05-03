@@ -630,8 +630,10 @@ CORS_ORIGIN="http://localhost:3000"
 **Frontend** (`apps/web/.env.local`):
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_COMPANY_SLUG=napoli
 ```
+
+El slug del tenant se resuelve en runtime desde el host (subdominio bajo
+`yantar.app` o `localhost`), no de variables de entorno.
 
 ### Datos de demo
 

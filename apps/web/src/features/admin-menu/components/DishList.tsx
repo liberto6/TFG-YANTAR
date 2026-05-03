@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useConfirm } from "@/lib/confirm-provider";
 import { useAdminDishes, useToggleAvailability, useDeleteDish } from "../hooks/use-admin-dishes";
 import type { Dish } from "@/features/menu/types/menu.types";
 
@@ -10,6 +11,18 @@ export function DishList() {
   const { data: dishes, isLoading } = useAdminDishes();
   const toggleMutation = useToggleAvailability();
   const deleteMutation = useDeleteDish();
+  const confirm = useConfirm();
+
+  async function askDelete(dishId: string, dishName: string) {
+    const ok = await confirm({
+      title: `¿Eliminar "${dishName}"?`,
+      description:
+        "El plato dejará de aparecer en la carta. Los pedidos pasados que lo contengan se mantienen intactos.",
+      confirmLabel: "Eliminar plato",
+      variant: "danger",
+    });
+    if (ok) deleteMutation.mutate(dishId);
+  }
 
   if (isLoading) {
     return (
@@ -70,11 +83,7 @@ export function DishList() {
                 size="sm"
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
-                onClick={() => {
-                  if (confirm(`¿Eliminar "${dish.name}"?`)) {
-                    deleteMutation.mutate(dish.id);
-                  }
-                }}
+                onClick={() => askDelete(dish.id, dish.name)}
                 disabled={deleteMutation.isPending}
               >
                 Eliminar

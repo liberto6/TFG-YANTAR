@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../hooks/use-cart";
 import type { CartItem as CartItemType } from "../types/cart.types";
 
@@ -13,54 +13,53 @@ export function CartItem({ item }: CartItemProps) {
 
   return (
     <div className="flex gap-3 py-3">
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-foreground">{item.dishName}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-body-sm font-medium text-foreground">{item.dishName}</p>
         {item.selectedVariantName && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             {item.selectedVariantName}
           </p>
         )}
         {item.selectedModifiers.length > 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-caption text-muted-foreground">
             + {item.selectedModifiers.map((m) => m.name).join(", ")}
           </p>
         )}
         {item.notes && (
-          <p className="text-xs italic text-muted-foreground">
+          <p className="text-caption italic text-muted-foreground">
             Nota: {item.notes}
           </p>
         )}
-        <p className="mt-1 text-sm font-semibold text-primary">
+        <p className="mt-1 text-body-sm font-semibold text-primary">
           {(item.unitPrice * item.quantity).toFixed(2)} €
         </p>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 w-7 p-0"
+      <div className="flex shrink-0 items-center gap-1">
+        <button
           onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+          aria-label="Reducir cantidad"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
         >
-          −
-        </Button>
-        <span className="w-5 text-center text-sm">{item.quantity}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 w-7 p-0"
+          <Minus size={14} />
+        </button>
+        <span className="w-6 text-center text-body-sm tabular-nums">
+          {item.quantity}
+        </span>
+        <button
           onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+          aria-label="Aumentar cantidad"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
         >
-          +
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+          <Plus size={14} />
+        </button>
+        <button
           onClick={() => removeItem(item.cartItemId)}
+          aria-label="Eliminar producto"
+          className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
         >
-          ✕
-        </Button>
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );

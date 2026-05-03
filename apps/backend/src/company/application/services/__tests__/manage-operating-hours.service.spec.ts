@@ -11,6 +11,7 @@ const mockOperatingHourRepository = {
 
 const mockBranchRepository = {
   findById: jest.fn(),
+  findBySlug: jest.fn(),
   findByCompanyId: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
@@ -30,6 +31,7 @@ describe('ManageOperatingHoursService', () => {
   const existingBranch = Branch.create({
     id: 'branch-1',
     companyId: 'company-1',
+    slug: 'downtown',
     name: 'Downtown',
     address: '123 Main St',
     serviceModes: [ServiceMode.PICKUP],

@@ -3,7 +3,11 @@
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useDishDetail } from "@/features/menu/hooks/use-dish-detail";
 import { VariantSelector } from "@/features/menu/components/VariantSelector";
 import { ModifierSelector } from "@/features/menu/components/ModifierSelector";
@@ -20,7 +24,6 @@ export default function DishDetailPage() {
   const [notes, setNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
 
-  // Calculate price
   const unitPrice = useMemo(() => {
     if (!dish) return 0;
     let price = dish.basePrice;
@@ -56,11 +59,9 @@ export default function DishDetailPage() {
 
   function canAddToCart(): boolean {
     if (!dish) return false;
-    // Check all required variant groups have a selection
     for (const group of dish.variantGroups) {
       if (group.required && !selectedVariantId) return false;
     }
-    // Check required modifier groups
     for (const group of dish.modifierGroups) {
       if (group.required) {
         const selected = group.options.filter((o) =>
@@ -109,50 +110,44 @@ export default function DishDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-48 animate-pulse rounded-xl bg-muted" />
-        <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="h-4 animate-pulse rounded bg-muted" />
+        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-7 w-2/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-4/5" />
       </div>
     );
   }
 
   if (isError || !dish) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
+      <div className="py-12 text-center text-body-sm text-muted-foreground">
         No se pudo cargar el plato.
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* Image */}
+    <div className="space-y-6 pb-28">
       {dish.imageUrl && (
-        <div className="relative h-48 w-full overflow-hidden rounded-xl">
+        <div className="relative h-56 w-full overflow-hidden rounded-2xl">
           <Image
             src={dish.imageUrl}
             alt={dish.name}
             fill
             className="object-cover"
-            sizes="(max-width: 512px) 100vw, 512px"
+            sizes="(max-width: 640px) 100vw, 640px"
           />
         </div>
       )}
 
-      {/* Title & description */}
       <div>
-        <h1 className="text-xl font-bold text-foreground">{dish.name}</h1>
+        <h1 className="text-h1 text-foreground">{dish.name}</h1>
         {dish.description && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {dish.description}
-          </p>
+          <p className="mt-1.5 text-body text-muted-foreground">{dish.description}</p>
         )}
-        <p className="mt-2 text-lg font-semibold text-primary">
-          {dish.basePrice.toFixed(2)} €
-        </p>
+        <p className="mt-3 text-h2 text-primary">{dish.basePrice.toFixed(2)} €</p>
       </div>
 
-      {/* Variants */}
       {dish.variantGroups.map((group) => (
         <VariantSelector
           key={group.id}
@@ -162,7 +157,6 @@ export default function DishDetailPage() {
         />
       ))}
 
-      {/* Modifiers */}
       {dish.modifierGroups.map((group) => (
         <ModifierSelector
           key={group.id}
@@ -172,54 +166,52 @@ export default function DishDetailPage() {
         />
       ))}
 
-      {/* Notes */}
-      <div className="space-y-2">
-        <label
-          htmlFor="notes"
-          className="text-sm font-medium text-foreground"
-        >
-          Notas (opcional)
-        </label>
-        <textarea
-          id="notes"
+      <div className="space-y-1.5">
+        <Label htmlFor="dish-notes">Notas (opcional)</Label>
+        <Textarea
+          id="dish-notes"
           rows={2}
-          placeholder="Sin cebolla, punto de coccion..."
+          maxLength={200}
+          showCount
+          placeholder="Sin cebolla, punto de cocción..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
 
-      {/* Sticky bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background px-4 py-3">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          {/* Quantity selector */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 w-9 p-0"
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto flex max-w-2xl items-center gap-3">
+          <div className="flex items-center gap-1.5" role="group" aria-label="Cantidad">
+            <button
+              type="button"
+              aria-label="Reducir cantidad"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+              disabled={quantity <= 1}
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             >
-              −
-            </Button>
-            <span className="w-6 text-center font-medium">{quantity}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 w-9 p-0"
+              <Minus size={16} />
+            </button>
+            <span className="w-7 text-center text-body font-semibold tabular-nums">{quantity}</span>
+            <button
+              type="button"
+              aria-label="Aumentar cantidad"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
               onClick={() => setQuantity((q) => q + 1)}
             >
-              +
-            </Button>
+              <Plus size={16} />
+            </button>
           </div>
 
           <Button
+            size="lg"
             className="flex-1"
             disabled={!canAddToCart()}
             onClick={handleAddToCart}
           >
-            Anadir al pedido — {(unitPrice * quantity).toFixed(2)} €
+            Añadir al pedido — {(unitPrice * quantity).toFixed(2)} €
           </Button>
         </div>
       </div>

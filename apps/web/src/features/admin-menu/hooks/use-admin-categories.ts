@@ -3,12 +3,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import type { Category } from "@/features/menu/types/menu.types";
-
-const COMPANY_SLUG = process.env.NEXT_PUBLIC_COMPANY_SLUG!;
+import { useTenantSlug } from "@/features/tenant/context/tenant-context";
 
 export function useAdminCategories() {
+  const companySlug = useTenantSlug();
   return useQuery({
-    queryKey: ["admin-categories", COMPANY_SLUG],
+    queryKey: ["admin-categories", companySlug],
     queryFn: () => api.get<Category[]>(`/admin/menu/categories`),
   });
 }

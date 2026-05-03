@@ -3,6 +3,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import {
+  ArrowLeft,
+  Bike,
+  Loader2,
+  MapPin,
+  ShoppingBag,
+  Store,
+} from "lucide-react";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useBranches, BranchSummary } from "../hooks/use-branches";
 import { useCheckDelivery } from "../hooks/use-check-delivery";
 import { useBranch } from "../context/branch-context";
@@ -11,6 +24,7 @@ interface Props {
   franchiseName: string;
   logoUrl: string | null;
   welcomeMessage: string | null;
+  initialBranch?: BranchSummary | null;
 }
 
 interface AddressSuggestion {
@@ -30,7 +44,6 @@ async function fetchSuggestions(query: string): Promise<AddressSuggestion[]> {
     );
     const data = await res.json();
     return data.map((item: any) => {
-      // Build a short readable label: "Calle, número, ciudad (provincia)"
       const a = item.address ?? {};
       const parts = [
         a.road && a.house_number ? `${a.road}, ${a.house_number}` : a.road,
@@ -47,25 +60,30 @@ async function fetchSuggestions(query: string): Promise<AddressSuggestion[]> {
   }
 }
 
-export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
+export function LandingPage({
+  franchiseName,
+  logoUrl,
+  welcomeMessage,
+  initialBranch,
+}: Props) {
   const router = useRouter();
   const { data: branches, isLoading } = useBranches();
   const { checkDelivery, isChecking, error: deliveryError, clearError } = useCheckDelivery();
   const { selectBranch } = useBranch();
 
-  const [step, setStep] = useState<Step>("branches");
-  const [selected, setSelected] = useState<BranchSummary | null>(null);
+  const [step, setStep] = useState<Step>(initialBranch ? "mode" : "branches");
+  const [selected, setSelected] = useState<BranchSummary | null>(
+    initialBranch ?? null,
+  );
   const [address, setAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
 
-  // Autocomplete state
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Debounced autocomplete fetch
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (address.length < 3) {
@@ -85,7 +103,6 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
     };
   }, [address]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -160,8 +177,7 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
-      {/* Header */}
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
       <div className="mb-10 flex flex-col items-center gap-4 text-center">
         {logoUrl && (
           <Image
@@ -169,142 +185,166 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
             alt={franchiseName}
             width={80}
             height={80}
-            className="rounded-2xl object-contain"
+            className="rounded-2xl object-contain shadow-sm"
           />
         )}
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {franchiseName}
-        </h1>
+        <h1 className="text-display text-foreground">{franchiseName}</h1>
         {welcomeMessage && (
-          <p className="text-muted-foreground text-base max-w-sm">{welcomeMessage}</p>
+          <p className="max-w-sm text-body text-muted-foreground">{welcomeMessage}</p>
         )}
       </div>
 
-      <div className="w-full max-w-sm space-y-4">
-        {/* Step 1: Choose branch */}
+      <div key={step} className="w-full max-w-sm animate-fade-in space-y-3">
         {step === "branches" && (
           <>
-            <p className="text-center text-sm font-medium text-muted-foreground uppercase tracking-wider mb-6">
+            <p className="mb-4 text-center text-caption font-medium uppercase tracking-wider text-muted-foreground">
               ¿Desde qué local quieres pedir?
             </p>
             {isLoading && (
               <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-20 rounded-2xl bg-muted animate-pulse" />
-                ))}
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
               </div>
             )}
-            {branches?.map((branch) => (
+            {branches?.map((branch, i) => (
               <button
                 key={branch.id}
                 onClick={() => handlePickBranch(branch)}
-                className="w-full rounded-2xl border border-border bg-surface p-5 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
+                style={{ ["--i" as any]: i }}
+                className="stagger-item group flex w-full items-start gap-4 rounded-2xl border border-border bg-surface p-4 text-left transition-[border-color,box-shadow,transform] duration-220 ease-out-expo hover:-translate-y-0.5 hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] animate-fade-in-up"
               >
-                <p className="font-semibold text-foreground text-lg">{branch.name}</p>
-                <p className="text-sm text-muted-foreground mt-1">{branch.address}</p>
-                <div className="flex gap-2 mt-2">
-                  {branch.serviceModes.includes("PICKUP") && (
-                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                      Recogida
-                    </span>
-                  )}
-                  {branch.serviceModes.includes("DELIVERY") && (
-                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                      Domicilio
-                    </span>
-                  )}
+                <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Store size={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-h3 text-foreground">{branch.name}</p>
+                  <p className="mt-0.5 text-body-sm text-muted-foreground">{branch.address}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {branch.serviceModes.includes("PICKUP") && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground">
+                        <ShoppingBag size={11} /> Recogida
+                      </span>
+                    )}
+                    {branch.serviceModes.includes("DELIVERY") && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-caption text-muted-foreground">
+                        <Bike size={11} /> Domicilio
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             ))}
           </>
         )}
 
-        {/* Step 2: Choose mode */}
         {step === "mode" && selected && (
           <>
             <button
               onClick={() => setStep("branches")}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+              className="mb-2 inline-flex items-center gap-1.5 rounded-md text-body-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              ← Cambiar local
+              <ArrowLeft size={14} /> Cambiar local
             </button>
-            <p className="text-center text-sm font-medium text-muted-foreground uppercase tracking-wider mb-6">
+            <p className="mb-4 text-center text-caption font-medium uppercase tracking-wider text-muted-foreground">
               {selected.name} — ¿Cómo quieres recibirlo?
             </p>
 
             {selected.serviceModes.includes("PICKUP") && (
               <button
                 onClick={handlePickup}
-                className="w-full rounded-2xl border border-border bg-surface p-5 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
+                className="flex w-full items-start gap-4 rounded-2xl border border-border bg-surface p-4 text-left transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]"
               >
-                <p className="font-semibold text-foreground text-lg">🛍 Recoger en el local</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Sin gastos de envío · Recoge cuando esté listo
-                </p>
+                <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <ShoppingBag size={20} />
+                </span>
+                <div className="flex-1">
+                  <p className="text-h3 text-foreground">Recoger en el local</p>
+                  <p className="mt-0.5 text-body-sm text-muted-foreground">
+                    Sin gastos de envío · Recoge cuando esté listo
+                  </p>
+                </div>
               </button>
             )}
 
             {selected.serviceModes.includes("DELIVERY") && (
               <button
                 onClick={() => setStep("address")}
-                className="w-full rounded-2xl border border-border bg-surface p-5 text-left transition-all hover:border-primary hover:shadow-md active:scale-[0.98]"
+                className="flex w-full items-start gap-4 rounded-2xl border border-border bg-surface p-4 text-left transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]"
               >
-                <p className="font-semibold text-foreground text-lg">🚴 Envío a domicilio</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Te lo llevamos a tu dirección
-                </p>
+                <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <Bike size={20} />
+                </span>
+                <div className="flex-1">
+                  <p className="text-h3 text-foreground">Envío a domicilio</p>
+                  <p className="mt-0.5 text-body-sm text-muted-foreground">
+                    Te lo llevamos a tu dirección
+                  </p>
+                </div>
               </button>
             )}
           </>
         )}
 
-        {/* Step 3: Enter address */}
         {step === "address" && selected && (
           <>
             <button
-              onClick={() => { setStep("mode"); setAddressError(null); clearError(); setShowSuggestions(false); }}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+              onClick={() => {
+                setStep("mode");
+                setAddressError(null);
+                clearError();
+                setShowSuggestions(false);
+              }}
+              className="mb-2 inline-flex items-center gap-1.5 rounded-md text-body-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              ← Volver
+              <ArrowLeft size={14} /> Volver
             </button>
-            <p className="text-center text-sm font-medium text-muted-foreground uppercase tracking-wider mb-6">
+            <p className="mb-4 text-center text-caption font-medium uppercase tracking-wider text-muted-foreground">
               ¿A dónde te lo enviamos?
             </p>
 
-            {/* Input + autocomplete dropdown */}
-            <div ref={wrapperRef} className="relative">
-              <input
-                type="text"
-                placeholder="Calle, número, ciudad..."
-                value={address}
-                onChange={(e) => handleAddressChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") { setShowSuggestions(false); handleDelivery(); }
-                  if (e.key === "Escape") setShowSuggestions(false);
-                }}
-                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                autoComplete="off"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+            <div ref={wrapperRef} className="relative space-y-1.5">
+              <Label htmlFor="address-input" required>
+                Dirección
+              </Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <MapPin size={16} />
+                </span>
+                <Input
+                  id="address-input"
+                  placeholder="Calle, número, ciudad..."
+                  value={address}
+                  invalid={Boolean(addressError || deliveryError)}
+                  onChange={(e) => handleAddressChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setShowSuggestions(false);
+                      handleDelivery();
+                    }
+                    if (e.key === "Escape") setShowSuggestions(false);
+                  }}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  autoComplete="off"
+                  className="pl-9 pr-9"
+                />
+                {isFetchingSuggestions && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-primary">
+                    <Loader2 size={16} className="animate-spin" />
+                  </span>
+                )}
+              </div>
 
-              {/* Loading indicator */}
-              {isFetchingSuggestions && (
-                <div className="absolute right-3 top-3.5">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                </div>
-              )}
-
-              {/* Suggestions dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-border bg-background shadow-lg animate-fade-in">
                   {suggestions.map((s, i) => (
                     <li key={i}>
                       <button
                         type="button"
-                        onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectSuggestion(s)}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors border-b border-border last:border-0"
+                        className="flex w-full items-start gap-2 border-b border-border px-3 py-2.5 text-left text-body-sm transition-colors last:border-0 hover:bg-secondary"
                       >
+                        <MapPin size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                         <span className="font-medium text-foreground">{s.shortName}</span>
                       </button>
                     </li>
@@ -314,26 +354,30 @@ export function LandingPage({ franchiseName, logoUrl, welcomeMessage }: Props) {
             </div>
 
             {(addressError || deliveryError) && (
-              <div className="rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800">
+              <Alert variant="warning" heading="No podemos entregar ahí">
                 {addressError ?? deliveryError}
                 {addressError?.includes("fuera de nuestra zona") && (
-                  <button
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
                     onClick={handlePickup}
-                    className="mt-2 block w-full rounded-lg bg-orange-100 px-3 py-2 text-xs font-medium text-orange-900 hover:bg-orange-200"
                   >
-                    Ir a recogerlo al local →
-                  </button>
+                    Ir a recogerlo al local
+                  </Button>
                 )}
-              </div>
+              </Alert>
             )}
 
-            <button
+            <Button
+              size="lg"
+              className="w-full"
+              loading={isChecking}
+              disabled={!address.trim()}
               onClick={handleDelivery}
-              disabled={isChecking || !address.trim()}
-              className="w-full rounded-xl bg-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {isChecking ? "Verificando zona..." : "Confirmar dirección"}
-            </button>
+              {isChecking ? "Verificando zona…" : "Confirmar dirección"}
+            </Button>
           </>
         )}
       </div>

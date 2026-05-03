@@ -5,11 +5,21 @@ import {
   IsNumber,
   IsArray,
   IsEnum,
+  Matches,
 } from 'class-validator'
 import { ServiceMode } from '@yantar/shared'
 import { Branch } from '../../domain/entities/branch.entity'
 
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const SLUG_MESSAGE =
+  'slug debe ser kebab-case ASCII (a-z, 0-9 y guiones; sin acentos ni espacios)'
+
 export class CreateBranchRequest {
+  @IsOptional()
+  @IsString()
+  @Matches(SLUG_RE, { message: SLUG_MESSAGE })
+  slug?: string
+
   @IsString()
   @IsNotEmpty()
   name!: string
@@ -40,6 +50,11 @@ export class CreateBranchRequest {
 }
 
 export class UpdateBranchRequest {
+  @IsOptional()
+  @IsString()
+  @Matches(SLUG_RE, { message: SLUG_MESSAGE })
+  slug?: string
+
   @IsOptional()
   @IsString()
   name?: string
@@ -73,6 +88,7 @@ export class UpdateBranchRequest {
 export class BranchResponse {
   id!: string
   companyId!: string
+  slug!: string
   name!: string
   address!: string
   phone!: string | null
@@ -88,6 +104,7 @@ export class BranchResponse {
     const response = new BranchResponse()
     response.id = branch.id
     response.companyId = branch.companyId
+    response.slug = branch.slug
     response.name = branch.name
     response.address = branch.address
     response.phone = branch.phone

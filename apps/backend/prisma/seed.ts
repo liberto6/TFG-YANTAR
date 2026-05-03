@@ -8,6 +8,11 @@ const COMPANY_ID = 'a1b2c3d4-0000-0000-0000-000000000001'
 const BRANCH_ID  = 'a1b2c3d4-0000-0000-0000-000000000002'
 const ADMIN_ID   = 'a1b2c3d4-0000-0000-0000-000000000003'
 
+// Base URL del backend para imágenes servidas desde public/uploads/seed/.
+// Override con SEED_IMAGE_BASE_URL en producción.
+const IMAGE_BASE_URL = process.env.SEED_IMAGE_BASE_URL ?? 'http://localhost:3001'
+const dishImage = (id: string) => `${IMAGE_BASE_URL}/uploads/seed/${id}.jpg`
+
 async function seedAllergens() {
   const allergens = [
     { code: 'GLUTEN',      name: 'Gluten',                     description: 'Cereales que contengan gluten.',                         isMajor: true },
@@ -60,10 +65,11 @@ async function seedDemoRestaurant() {
   // ── Sede ──────────────────────────────────────────────────────────────────
   await prisma.branch.upsert({
     where: { id: BRANCH_ID },
-    update: {},
+    update: { slug: 'centro' },
     create: {
       id: BRANCH_ID,
       companyId: COMPANY_ID,
+      slug: 'centro',
       name: 'Sede Centro',
       address: 'Calle Mayor 12, Madrid',
       phone: '+34 910 000 000',
@@ -189,11 +195,13 @@ async function seedDemoRestaurant() {
 
   for (const dish of dishes) {
     const { allergenCodes, ...dishData } = dish
+    const imageUrl = dishImage(dish.id)
     await prisma.dish.upsert({
       where: { id: dish.id },
-      update: {},
+      update: { imageUrl },
       create: {
         ...dishData,
+        imageUrl,
         companyId: COMPANY_ID,
         status: 'ACTIVE',
         sortOrder: 0,
@@ -295,23 +303,11 @@ async function seedDemoRestaurant() {
   }
 
   console.log('')
-  console.log('✅ Seed completo. Datos para el .env:')
+  console.log('Seed completo (Pizzeria Napoli).')
+  console.log('  Slug empresa: napoli')
+  console.log('  Slug sede:    centro')
+  console.log('  Admin:        admin@napoli.es / admin123')
   console.log('')
-  console.log('  apps/backend/.env:')
-  console.log('    DATABASE_URL="postgresql://yantar:yantar_dev_password@localhost:5432/yantar_dev"')
-  console.log('')
-  console.log('  apps/web/.env.local:')
-  console.log(`    NEXT_PUBLIC_API_URL=http://localhost:3001`)
-  console.log(`    NEXT_PUBLIC_COMPANY_ID=${COMPANY_ID}`)
-  console.log(`    NEXT_PUBLIC_COMPANY_SLUG=napoli`)
-  console.log(`    NEXT_PUBLIC_BRANCH_ID=${BRANCH_ID}`)
-  console.log('')
-  console.log('  Credenciales del admin:')
-  console.log('    Email:    admin@napoli.es')
-  console.log('    Password: admin123')
-  console.log('')
-  console.log('  Para crear el admin con contraseña, usa POST /auth/register-business')
-  console.log('  o el endpoint de seed adicional en la sección de desarrollo.')
 }
 
 async function main() {

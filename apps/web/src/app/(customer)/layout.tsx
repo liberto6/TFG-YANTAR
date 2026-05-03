@@ -3,80 +3,61 @@ import type { ReactNode } from "react";
 import { CartBadge } from "@/features/cart/components/CartBadge";
 import { CartDrawer } from "@/features/cart/components/CartDrawer";
 import { PointsBadge } from "@/features/loyalty/components/PointsBadge";
-import { buildBrandingCssVars } from "@/lib/color-utils";
-
-interface CompanyConfig {
-  name: string;
-  appName?: string | null;
-  colorPrimary?: string | null;
-  colorSecondary?: string | null;
-  colorAccent?: string | null;
-  colorBackground?: string | null;
-  colorSurface?: string | null;
-  colorText?: string | null;
-  colorTextMuted?: string | null;
-}
-
-async function fetchCompanyConfig(): Promise<CompanyConfig | null> {
-  const slug = process.env.NEXT_PUBLIC_COMPANY_SLUG;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!slug || !apiUrl) return null;
-  try {
-    const res = await fetch(`${apiUrl}/companies/${slug}/config`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
+import { MobileNav } from "@/components/layout/MobileNav";
+import { CustomerNavLink } from "@/components/layout/CustomerNavLink";
+import { PageTransition } from "@/components/layout/PageTransition";
+import { brandingStyleTag, fetchCompanyConfig } from "@/lib/company-config";
+import { getTenantSlug } from "@/lib/tenant";
 
 export default async function CustomerLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  const config = await fetchCompanyConfig();
-  const brandingVars = config ? buildBrandingCssVars(config) : "";
+  const tenantSlug = getTenantSlug();
+  const config = await fetchCompanyConfig(tenantSlug);
+  const styleTag = brandingStyleTag(config);
   const restaurantName =
-    config?.appName ?? config?.name ?? process.env.NEXT_PUBLIC_COMPANY_SLUG ?? "Restaurante";
+    config?.appName ?? config?.name ?? tenantSlug ?? "Restaurante";
 
   return (
     <div className="flex min-h-screen flex-col">
-      {brandingVars && <style>{`:root { ${brandingVars} }`}</style>}
+      {styleTag && <style>{styleTag}</style>}
 
-      <header className="sticky top-0 z-50 border-b border-border bg-primary text-white">
-        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
-          <Link href="/menu" className="text-lg font-bold tracking-tight">
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido
+      </a>
+
+      <header className="sticky top-0 z-30 border-b border-border bg-primary text-primary-foreground shadow-sm">
+        <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4">
+          <MobileNav />
+
+          <Link
+            href="/menu"
+            className="flex-1 truncate text-h3 font-semibold tracking-tight md:flex-initial"
+          >
             {restaurantName}
           </Link>
-          <nav className="flex items-center gap-2 text-sm">
-            <Link
-              href="/menu"
-              className="rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/10"
-            >
-              Carta
-            </Link>
-            <Link
-              href="/orders"
-              className="rounded-md px-2.5 py-1.5 transition-colors hover:bg-white/10"
-            >
-              Pedidos
-            </Link>
+
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Navegación">
+            <CustomerNavLink href="/menu">Carta</CustomerNavLink>
+            <CustomerNavLink href="/orders">Mis pedidos</CustomerNavLink>
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1.5">
             <PointsBadge />
             <CartBadge />
-          </nav>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-6">
-        {children}
+      <main id="main-content" className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
+        <PageTransition>{children}</PageTransition>
       </main>
 
       <CartDrawer />
 
-      <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
+      <footer className="mt-auto border-t border-border py-3 text-center text-caption text-muted-foreground">
         Powered by Yantar
       </footer>
     </div>

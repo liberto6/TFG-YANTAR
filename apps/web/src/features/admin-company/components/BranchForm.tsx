@@ -125,7 +125,7 @@ export function BranchForm({ branch }: BranchFormProps) {
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear sede"}
+          {isPending ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear sede"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.push("/admin/branches")}>
           Cancelar

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/lib/confirm-provider";
 import {
   useAdminRewards,
   useCreateReward,
@@ -22,6 +23,18 @@ export default function RewardsPage() {
   const createMutation = useCreateReward();
   const updateMutation = useUpdateReward();
   const deleteMutation = useDeleteReward();
+  const confirm = useConfirm();
+
+  async function askDelete(rewardId: string, rewardName: string) {
+    const ok = await confirm({
+      title: `¿Eliminar la recompensa "${rewardName}"?`,
+      description:
+        "Los clientes ya no podrán canjearla. Los canjes anteriores se mantienen en su historial.",
+      confirmLabel: "Eliminar recompensa",
+      variant: "danger",
+    });
+    if (ok) deleteMutation.mutate(rewardId);
+  }
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -106,7 +119,7 @@ export default function RewardsPage() {
               </div>
             </div>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creando..." : "Crear recompensa"}
+              {createMutation.isPending ? "Creando…" : "Crear recompensa"}
             </Button>
           </CardContent>
         </Card>
@@ -150,9 +163,7 @@ export default function RewardsPage() {
                     size="sm"
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => {
-                      if (confirm(`¿Eliminar "${reward.name}"?`)) deleteMutation.mutate(reward.id);
-                    }}
+                    onClick={() => askDelete(reward.id, reward.name)}
                     disabled={deleteMutation.isPending}
                   >
                     Eliminar

@@ -8,6 +8,7 @@ const makeBranch = (id: string, companyId: string) =>
   Branch.restore({
     id,
     companyId,
+    slug: id,
     name: 'Branch',
     address: 'Calle Test 1',
     phone: null,

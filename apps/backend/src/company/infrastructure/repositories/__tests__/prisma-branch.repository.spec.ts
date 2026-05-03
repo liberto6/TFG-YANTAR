@@ -5,6 +5,7 @@ import { Branch } from '../../../domain/entities/branch.entity'
 const mockPrismaBranch = {
   id: 'branch-1',
   companyId: 'company-1',
+  slug: 'downtown',
   name: 'Downtown Branch',
   address: '123 Main St',
   phone: '+34600000000',
@@ -60,6 +61,29 @@ describe('PrismaBranchRepository', () => {
     })
   })
 
+  describe('findBySlug', () => {
+    it('should find branch by slug scoped by companyId', async () => {
+      mockPrisma.branch.findFirst.mockResolvedValue(mockPrismaBranch)
+
+      const result = await repository.findBySlug('downtown', 'company-1')
+
+      expect(mockPrisma.branch.findFirst).toHaveBeenCalledWith({
+        where: { slug: 'downtown', companyId: 'company-1' },
+        include: { operatingHours: true },
+      })
+      expect(result).not.toBeNull()
+      expect(result!.slug).toBe('downtown')
+    })
+
+    it('should return null when no match', async () => {
+      mockPrisma.branch.findFirst.mockResolvedValue(null)
+
+      const result = await repository.findBySlug('missing', 'company-1')
+
+      expect(result).toBeNull()
+    })
+  })
+
   describe('findByCompanyId', () => {
     it('should return all branches for a company', async () => {
       mockPrisma.branch.findMany.mockResolvedValue([mockPrismaBranch])
@@ -80,6 +104,7 @@ describe('PrismaBranchRepository', () => {
       const branch = Branch.create({
         id: 'branch-1',
         companyId: 'company-1',
+        slug: 'downtown',
         name: 'Downtown Branch',
         address: '123 Main St',
         phone: '+34600000000',

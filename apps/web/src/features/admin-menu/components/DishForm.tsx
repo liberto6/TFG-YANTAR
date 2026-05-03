@@ -14,16 +14,16 @@ import type { Dish, VariantGroup, ModifierGroup } from "@/features/menu/types/me
 
 const ALLERGEN_OPTIONS = [
   { code: "GLUTEN", label: "Gluten" },
-  { code: "CRUSTACEANS", label: "Crustaceos" },
+  { code: "CRUSTACEANS", label: "Crustáceos" },
   { code: "EGGS", label: "Huevo" },
   { code: "FISH", label: "Pescado" },
   { code: "PEANUTS", label: "Cacahuetes" },
   { code: "SOY", label: "Soja" },
-  { code: "DAIRY", label: "Lacteos" },
+  { code: "DAIRY", label: "Lácteos" },
   { code: "NUTS", label: "Frutos secos" },
   { code: "CELERY", label: "Apio" },
   { code: "MUSTARD", label: "Mostaza" },
-  { code: "SESAME", label: "Sesamo" },
+  { code: "SESAME", label: "Sésamo" },
   { code: "SULPHITES", label: "Sulfitos" },
   { code: "LUPIN", label: "Altramuces" },
   { code: "MOLLUSCS", label: "Moluscos" },
@@ -99,7 +99,7 @@ export function DishForm({ dish }: DishFormProps) {
 
       <Card>
         <CardHeader className="pb-2">
-          <h2 className="font-medium">Informacion basica</h2>
+          <h2 className="font-medium">Información básica</h2>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
@@ -112,11 +112,11 @@ export function DishForm({ dish }: DishFormProps) {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">Descripcion</label>
+            <label className="text-sm font-medium">Descripción</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descripcion del plato"
+              placeholder="Descripción del plato"
               rows={2}
               className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -135,14 +135,14 @@ export function DishForm({ dish }: DishFormProps) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Categoria *</label>
+              <label className="text-sm font-medium">Categoría *</label>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 required
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="">Selecciona categoria</option>
+                <option value="">Selecciona categoría</option>
                 {categories?.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -165,7 +165,7 @@ export function DishForm({ dish }: DishFormProps) {
 
       <Card>
         <CardHeader className="pb-2">
-          <h2 className="font-medium">Alergenos</h2>
+          <h2 className="font-medium">Alérgenos</h2>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -213,7 +213,7 @@ export function DishForm({ dish }: DishFormProps) {
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Guardando..." : isEditing ? "Guardar cambios" : "Crear plato"}
+          {isPending ? "Guardando…" : isEditing ? "Guardar cambios" : "Crear plato"}
         </Button>
         <Button
           type="button"
