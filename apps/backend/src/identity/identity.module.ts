@@ -6,7 +6,7 @@ import { RegisterBusinessService } from './application/services/register-busines
 import { UpdateProfileService } from './application/services/update-profile.service'
 import { LoginService } from './application/services/login.service'
 import { PrismaUserRepository } from './infrastructure/repositories/prisma-user.repository'
-import { MockAuthAdapter } from './infrastructure/adapters/mock-auth.adapter'
+import { JwtAuthAdapter } from './infrastructure/adapters/jwt-auth.adapter'
 import { BcryptPasswordAdapter } from './infrastructure/adapters/bcrypt-password.adapter'
 import { CompanyModule } from '../company/company.module'
 
@@ -25,7 +25,7 @@ import { CompanyModule } from '../company/company.module'
     },
     {
       provide: 'IAuthService',
-      useClass: MockAuthAdapter,
+      useClass: JwtAuthAdapter,
     },
     {
       provide: 'IPasswordService',

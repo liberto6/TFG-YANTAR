@@ -1,6 +1,7 @@
 import { LoginService } from '../login.service'
 import { IUserRepository } from '../../../domain/ports/user-repository.port'
 import { IPasswordService } from '../../../domain/ports/password-service.port'
+import { IAuthService } from '../../../domain/ports/auth-service.port'
 import { User } from '../../../domain/entities/user.entity'
 import { UserRole } from '@yantar/shared'
 import { UserNotFoundError } from '../../../domain/errors/user-not-found.error'
@@ -8,6 +9,7 @@ import { InvalidCredentialsError } from '../../../domain/errors/invalid-credenti
 import { LoginRequest } from '../../dtos/login.dto'
 
 const COMPANY_ID = 'company-abc'
+const FAKE_TOKEN = 'header.payload.signature'
 
 function makeUser(passwordHash: string | null = '$2b$10$hashedpassword') {
   return User.restore({
@@ -29,6 +31,7 @@ describe('LoginService', () => {
   let service: LoginService
   let userRepository: jest.Mocked<IUserRepository>
   let passwordService: jest.Mocked<IPasswordService>
+  let authService: jest.Mocked<IAuthService>
 
   const request: LoginRequest = {
     email: 'admin@napoli.es',
@@ -47,8 +50,13 @@ describe('LoginService', () => {
       hash: jest.fn(),
       verify: jest.fn(),
     }
+    authService = {
+      createAuthUser: jest.fn(),
+      issueToken: jest.fn().mockReturnValue(FAKE_TOKEN),
+      getUserIdFromToken: jest.fn(),
+    }
 
-    service = new LoginService(userRepository, passwordService)
+    service = new LoginService(userRepository, passwordService, authService)
   })
 
   it('debería lanzar UserNotFoundError si el email no existe en la empresa', async () => {
@@ -56,6 +64,7 @@ describe('LoginService', () => {
 
     await expect(service.execute(request)).rejects.toThrow(UserNotFoundError)
     expect(passwordService.verify).not.toHaveBeenCalled()
+    expect(authService.issueToken).not.toHaveBeenCalled()
   })
 
   it('debería lanzar InvalidCredentialsError si la contraseña no coincide', async () => {
@@ -64,15 +73,21 @@ describe('LoginService', () => {
 
     await expect(service.execute(request)).rejects.toThrow(InvalidCredentialsError)
     expect(passwordService.verify).toHaveBeenCalledWith('admin123', '$2b$10$hashedpassword')
+    expect(authService.issueToken).not.toHaveBeenCalled()
   })
 
-  it('debería retornar token y user si la contraseña es correcta', async () => {
+  it('debería emitir un JWT con sub, role y companyId si la contraseña es correcta', async () => {
     userRepository.findByEmailAndCompany.mockResolvedValue(makeUser())
     passwordService.verify.mockResolvedValue(true)
 
     const result = await service.execute(request)
 
-    expect(result.token).toBe('user-1')
+    expect(authService.issueToken).toHaveBeenCalledWith({
+      sub: 'user-1',
+      role: UserRole.RESTAURANT_ADMIN,
+      companyId: COMPANY_ID,
+    })
+    expect(result.token).toBe(FAKE_TOKEN)
     expect(result.user.email).toBe('admin@napoli.es')
     expect(result.user.id).toBe('user-1')
   })
@@ -93,6 +108,7 @@ describe('LoginService', () => {
     const result = await service.execute(request)
 
     expect(passwordService.verify).not.toHaveBeenCalled()
-    expect(result.token).toBe('user-1')
+    expect(authService.issueToken).toHaveBeenCalled()
+    expect(result.token).toBe(FAKE_TOKEN)
   })
 })

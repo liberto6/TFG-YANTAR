@@ -27,6 +27,7 @@ describe('RegisterBusinessService', () => {
     }
     authService = {
       createAuthUser: jest.fn(),
+      issueToken: jest.fn(),
       getUserIdFromToken: jest.fn(),
     }
     companyRepository = {

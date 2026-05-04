@@ -29,6 +29,7 @@ describe('RegisterUserService', () => {
     }
     authService = {
       createAuthUser: jest.fn(),
+      issueToken: jest.fn(),
       getUserIdFromToken: jest.fn(),
     }
     passwordService = {

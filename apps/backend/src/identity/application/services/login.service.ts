@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { IUserRepository } from '../../domain/ports/user-repository.port'
 import { IPasswordService } from '../../domain/ports/password-service.port'
+import { IAuthService } from '../../domain/ports/auth-service.port'
 import { UserNotFoundError } from '../../domain/errors/user-not-found.error'
 import { InvalidCredentialsError } from '../../domain/errors/invalid-credentials.error'
 import { LoginRequest, LoginResponse } from '../dtos/login.dto'
@@ -13,6 +14,8 @@ export class LoginService {
     private readonly userRepository: IUserRepository,
     @Inject('IPasswordService')
     private readonly passwordService: IPasswordService,
+    @Inject('IAuthService')
+    private readonly authService: IAuthService,
   ) {}
 
   async execute(request: LoginRequest): Promise<LoginResponse> {
@@ -38,7 +41,11 @@ export class LoginService {
 
     const response = new LoginResponse()
     response.user = UserDto.fromEntity(user)
-    response.token = user.id
+    response.token = this.authService.issueToken({
+      sub: user.id,
+      role: user.role,
+      companyId: user.companyId,
+    })
     return response
   }
 }
