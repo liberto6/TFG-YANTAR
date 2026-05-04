@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useDemoStep, type DemoRole } from "../hooks/use-demo-step";
+import { useDemoStep } from "../hooks/use-demo-step";
 import { DEMO_STEPS } from "../steps";
 import { DemoControls } from "./DemoControls";
 import { DemoNarration } from "./DemoNarration";
@@ -120,13 +120,6 @@ function PausedOverlay() {
   );
 }
 
-const ROLE_GROUPS: { role: DemoRole; label: string }[] = [
-  { role: "visitor", label: "Descubrimiento" },
-  { role: "admin", label: "Restauradora" },
-  { role: "customer", label: "Comensal" },
-  { role: "operator", label: "Cocinero" },
-];
-
 function ChapterSidebar({
   currentIndex,
   onPick,
@@ -137,57 +130,46 @@ function ChapterSidebar({
   return (
     <nav
       aria-label="Capítulos de la demo"
-      className="sticky top-16 space-y-3 rounded-2xl border border-border bg-surface p-3"
+      className="sticky top-16 space-y-1 rounded-2xl border border-border bg-surface p-3"
     >
-      <p className="px-2 pt-0.5 text-caption uppercase tracking-wider text-muted-foreground">
+      <p className="px-2 pb-1 pt-0.5 text-caption uppercase tracking-wider text-muted-foreground">
         Capítulos
       </p>
-      {ROLE_GROUPS.map((group) => {
-        const items = DEMO_STEPS.map((s, i) => ({ ...s, index: i })).filter(
-          (s) => s.role === group.role,
-        );
-        if (items.length === 0) return null;
-        return (
-          <div key={group.role} className="space-y-0.5">
-            <p className="px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              {group.label}
-            </p>
-            {items.map((s) => {
-              const i = s.index;
-              const active = i === currentIndex;
-              const past = i < currentIndex;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => onPick(i)}
+      <ol className="space-y-0.5">
+        {DEMO_STEPS.map((s, i) => {
+          const active = i === currentIndex;
+          const past = i < currentIndex;
+          return (
+            <li key={s.id}>
+              <button
+                onClick={() => onPick(i)}
+                className={[
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : past
+                      ? "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      : "text-muted-foreground/80 hover:bg-secondary hover:text-foreground",
+                ].join(" ")}
+              >
+                <span
                   className={[
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium",
                     active
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-primary text-primary-foreground"
                       : past
-                        ? "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        : "text-muted-foreground/80 hover:bg-secondary hover:text-foreground",
+                        ? "bg-success/20 text-success"
+                        : "bg-muted text-muted-foreground",
                   ].join(" ")}
                 >
-                  <span
-                    className={[
-                      "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : past
-                          ? "bg-success/20 text-success"
-                          : "bg-muted text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="truncate">{s.title}</span>
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
+                  {i + 1}
+                </span>
+                <span className="truncate">{s.title}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </nav>
   );
 }

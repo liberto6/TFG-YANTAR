@@ -187,3 +187,66 @@ export const NAPOLI_CATEGORIES: Category[] = DEMO_CATEGORIES.map((c, i) => ({
 }));
 
 export const NAPOLI_PEPPERONI: Dish = NAPOLI_DISHES[1]!;
+
+import type { Order } from "@/features/orders/types/order.types";
+import type { OperatingHourDto } from "@/features/admin-company/hooks/use-operating-hours";
+
+/** Horarios de demo: L-D 12:00-23:00, domingo cerrado. */
+export const NAPOLI_HOURS: OperatingHourDto[] = [0, 1, 2, 3, 4, 5, 6].map(
+  (day) => ({
+    id: `demo-hour-${day}`,
+    dayOfWeek: day,
+    openTime: "12:00",
+    closeTime: "23:00",
+    isClosed: day === 0,
+  }),
+);
+
+/** Pedido de demo en estado PENDING, pensado para el kanban operativo. */
+export const NAPOLI_KANBAN_ORDER: Order = {
+  id: "demo-order-aaaaaa",
+  companyId: DEMO_COMPANY.id,
+  branchId: DEMO_BRANCH.id,
+  customerId: "demo-customer-1",
+  status: "PENDING",
+  deliveryMode: "DELIVERY",
+  items: [
+    {
+      id: "demo-item-1",
+      dishId: "demo-dish-2",
+      dishName: "Pepperoni",
+      quantity: 1,
+      unitPrice: 14.0,
+      selectedVariant: "Mediana (30cm)",
+      selectedModifiers: [{ name: "Extra mozzarella", price: 1.5 }],
+      notes: null,
+      lineTotal: 14.0,
+    },
+    {
+      id: "demo-item-2",
+      dishId: "demo-dish-3",
+      dishName: "Quattro Formaggi",
+      quantity: 1,
+      unitPrice: 16.5,
+      selectedVariant: "Grande (36cm)",
+      selectedModifiers: [],
+      notes: null,
+      lineTotal: 16.5,
+    },
+  ],
+  subtotal: 30.5,
+  deliveryFee: 2.5,
+  discount: 0,
+  total: 33.0,
+  notes: null,
+  deliveryAddress: DEMO_CUSTOMER.address,
+  // Marcamos creado hace 1 minuto para que el badge "hace Nm" muestre verde.
+  scheduledTime: null,
+  rejectionReason: null,
+  estimatedMinutes: null,
+  paymentMethod: "CASH",
+  createdAt: new Date(Date.now() - 60_000).toISOString(),
+  confirmedAt: null,
+  completedAt: null,
+  updatedAt: new Date(Date.now() - 60_000).toISOString(),
+};

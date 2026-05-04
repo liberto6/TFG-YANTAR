@@ -34,10 +34,26 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        // Sombras a color para piezas hero / CTA principales (proyectan
+        // matiz primario en lugar del clásico gris).
+        "primary-glow":
+          "0 30px 60px -20px rgb(192 57 43 / 0.35), 0 12px 24px -12px rgb(192 57 43 / 0.25)",
+        "primary-glow-lg":
+          "0 50px 100px -30px rgb(192 57 43 / 0.45), 0 20px 40px -16px rgb(192 57 43 / 0.3)",
+        "accent-glow":
+          "0 30px 60px -20px rgb(230 126 34 / 0.3), 0 12px 24px -12px rgb(230 126 34 / 0.2)",
+      },
       fontSize: {
-        "display": ["2.25rem", { lineHeight: "2.5rem", letterSpacing: "-0.02em", fontWeight: "700" }],
-        "h1": ["1.875rem", { lineHeight: "2.25rem", letterSpacing: "-0.01em", fontWeight: "700" }],
-        "h2": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.01em", fontWeight: "600" }],
+        // Escala fluida: usa clamp(min, preferred, max) en h1/display para que
+        // respiren en todas las pantallas sin breakpoints rígidos.
+        "display": ["clamp(2.5rem, 4.5vw + 1rem, 4.5rem)", { lineHeight: "1.05", letterSpacing: "-0.04em", fontWeight: "700" }],
+        "h1": ["clamp(1.875rem, 2.5vw + 0.75rem, 3rem)", { lineHeight: "1.1", letterSpacing: "-0.03em", fontWeight: "700" }],
+        "h2": ["1.5rem", { lineHeight: "2rem", letterSpacing: "-0.02em", fontWeight: "600" }],
         "h3": ["1.25rem", { lineHeight: "1.75rem", fontWeight: "600" }],
         "body-lg": ["1.125rem", { lineHeight: "1.75rem" }],
         "body": ["1rem", { lineHeight: "1.5rem" }],
@@ -98,6 +114,14 @@ const config: Config = {
           from: { transform: "scaleX(0)" },
           to: { transform: "scaleX(1)" },
         },
+        "mesh-spin": {
+          from: { transform: "rotate(0deg) scale(1.4)" },
+          to: { transform: "rotate(360deg) scale(1.4)" },
+        },
+        "shine": {
+          "0%": { transform: "translateX(-150%) skewX(-15deg)" },
+          "100%": { transform: "translateX(250%) skewX(-15deg)" },
+        },
       },
       animation: {
         "fade-in": "fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
@@ -110,6 +134,8 @@ const config: Config = {
         "ping-ring": "ping-ring 1.4s cubic-bezier(0, 0, 0.2, 1) infinite",
         "draw-check": "draw-check 400ms cubic-bezier(0.65, 0, 0.45, 1) 200ms both",
         "bump": "bump 320ms cubic-bezier(0.34, 1.16, 0.64, 1)",
+        "mesh-spin": "mesh-spin 22s linear infinite",
+        "shine": "shine 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

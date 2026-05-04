@@ -1,27 +1,47 @@
 "use client";
 
-import { Bell, Bike, Clock } from "lucide-react";
+import { Bell } from "lucide-react";
+import { OrderKanbanCard } from "@/features/operativo/components/OrderKanbanCard";
 import { DemoChapter } from "../components/DemoChapter";
-import { DEMO_ORDER } from "../data/napoli-fixtures";
+import { DemoMockShell } from "../components/DemoMockShell";
+import { NAPOLI_KANBAN_ORDER } from "../data/napoli-fixtures";
 
 /**
- * Paso 14 — La cocina ve aparecer el pedido recién creado en la columna
- * PENDIENTE. Animación de entrada + badge de "nuevo" pulsando para enfatizar
- * que ha llegado por WebSocket en tiempo real.
+ * Paso 14 — La cocina recibe el pedido en tiempo real. Usa el componente
+ * real `<OrderKanbanCard>` montado dentro del DemoMockShell, así la tarjeta
+ * que ve el tribunal es exactamente la misma que verá el operario en
+ * producción (con sus mismos botones, estilos y comportamiento al hacer
+ * click).
  */
 export function Step14OperativoReceive() {
   return (
     <DemoChapter url="napoli.yantar.app/operativo" device="tablet">
-      <KanbanShell highlight="pending" />
+      <DemoMockShell>
+        <KanbanShellReal highlight="pending" />
+      </DemoMockShell>
     </DemoChapter>
   );
 }
 
-export function KanbanShell({
+export function KanbanShellReal({
   highlight,
 }: {
   highlight: "pending" | "accepted" | "preparing" | "ready";
 }) {
+  const STATUS_BY_COL: Record<typeof highlight, string> = {
+    pending: "PENDING",
+    accepted: "ACCEPTED",
+    preparing: "PREPARING",
+    ready: "READY",
+  };
+
+  // Cada columna recibe el pedido en su estado correspondiente cuando le
+  // toca destacar; las demás quedan vacías.
+  const order = {
+    ...NAPOLI_KANBAN_ORDER,
+    status: STATUS_BY_COL[highlight] as typeof NAPOLI_KANBAN_ORDER.status,
+  };
+
   return (
     <div className="space-y-4 bg-background p-4">
       <header className="flex items-center justify-between">
@@ -39,16 +59,35 @@ export function KanbanShell({
 
       <div className="grid grid-cols-4 gap-2">
         <Column title="Pendiente" highlighted={highlight === "pending"}>
-          {highlight === "pending" && <NewOrderCard />}
+          {highlight === "pending" && (
+            <div className="relative animate-fade-in-up">
+              <span className="absolute -right-1 -top-1 z-10 inline-flex items-center gap-1 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary-foreground shadow-md">
+                <Bell size={9} className="animate-pulse" /> Nuevo
+              </span>
+              <OrderKanbanCard order={order} />
+            </div>
+          )}
         </Column>
         <Column title="Aceptado" highlighted={highlight === "accepted"}>
-          {highlight === "accepted" && <ProgressOrderCard state="accepted" />}
+          {highlight === "accepted" && (
+            <div className="animate-fade-in-up">
+              <OrderKanbanCard order={order} />
+            </div>
+          )}
         </Column>
         <Column title="Preparando" highlighted={highlight === "preparing"}>
-          {highlight === "preparing" && <ProgressOrderCard state="preparing" />}
+          {highlight === "preparing" && (
+            <div className="animate-fade-in-up">
+              <OrderKanbanCard order={order} />
+            </div>
+          )}
         </Column>
         <Column title="Listo" highlighted={highlight === "ready"}>
-          {highlight === "ready" && <ProgressOrderCard state="ready" />}
+          {highlight === "ready" && (
+            <div className="animate-fade-in-up">
+              <OrderKanbanCard order={order} />
+            </div>
+          )}
         </Column>
       </div>
     </div>
@@ -67,7 +106,7 @@ function Column({
   return (
     <div
       className={[
-        "min-h-[260px] rounded-xl border bg-surface p-2 transition",
+        "min-h-[280px] rounded-xl border bg-surface p-2 transition",
         highlighted ? "border-primary bg-primary/5" : "border-border",
       ].join(" ")}
     >
@@ -76,76 +115,5 @@ function Column({
       </p>
       <div className="space-y-2">{children}</div>
     </div>
-  );
-}
-
-function NewOrderCard() {
-  return (
-    <article className="space-y-1.5 rounded-lg border-2 border-primary bg-background p-2.5 shadow-md animate-fade-in-up">
-      <header className="flex items-center justify-between">
-        <span className="text-body-sm font-semibold text-foreground">#1042</span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-primary-foreground">
-          <Bell size={9} className="animate-pulse" /> Nuevo
-        </span>
-      </header>
-      <p className="text-caption text-muted-foreground">Carlos García</p>
-      <ul className="space-y-0.5 text-caption">
-        {DEMO_ORDER.items.map((it, i) => (
-          <li key={i} className="text-foreground">
-            <span className="text-muted-foreground">{it.quantity}×</span> {it.dishName}{" "}
-            <span className="text-muted-foreground">({it.variant})</span>
-          </li>
-        ))}
-      </ul>
-      <footer className="flex items-center justify-between text-caption text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <Bike size={10} /> Domicilio
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Clock size={10} /> {DEMO_ORDER.scheduledTime}
-        </span>
-      </footer>
-      <div className="grid grid-cols-2 gap-1 pt-1">
-        <button className="rounded-md border border-border bg-surface py-1 text-caption">
-          Rechazar
-        </button>
-        <button className="rounded-md bg-primary py-1 text-caption font-medium text-primary-foreground">
-          Aceptar
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function ProgressOrderCard({
-  state,
-}: {
-  state: "accepted" | "preparing" | "ready";
-}) {
-  const ACTIONS: Record<typeof state, string> = {
-    accepted: "Empezar a preparar",
-    preparing: "Marcar listo",
-    ready: "Entregado",
-  };
-  return (
-    <article className="space-y-1.5 rounded-lg border border-border bg-background p-2.5 animate-fade-in-up">
-      <header className="flex items-center justify-between">
-        <span className="text-body-sm font-semibold text-foreground">#1042</span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
-          <Clock size={9} /> {DEMO_ORDER.scheduledTime}
-        </span>
-      </header>
-      <p className="text-caption text-muted-foreground">Carlos García</p>
-      <ul className="space-y-0.5 text-caption">
-        {DEMO_ORDER.items.map((it, i) => (
-          <li key={i} className="text-foreground">
-            <span className="text-muted-foreground">{it.quantity}×</span> {it.dishName}
-          </li>
-        ))}
-      </ul>
-      <button className="w-full rounded-md bg-primary py-1 text-caption font-medium text-primary-foreground">
-        {ACTIONS[state]}
-      </button>
-    </article>
   );
 }

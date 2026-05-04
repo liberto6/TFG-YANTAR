@@ -16,6 +16,7 @@ import { CategoryNav } from "@/features/menu/components/CategoryNav";
 import { DishCard } from "@/features/menu/components/DishCard";
 import { AllergenFilter } from "@/features/menu/components/AllergenFilter";
 import { DailyGreeting } from "@/features/menu/components/DailyGreeting";
+import { MenuHero } from "@/features/menu/components/MenuHero";
 
 // Header customer (h-14 = 56px) + CategoryNav sticky (~48px) + 8px de aire
 const SCROLL_OFFSET_PX = 112;
@@ -109,6 +110,7 @@ export default function MenuPage() {
 
   return (
     <div className="space-y-4">
+      <MenuHero />
       <DailyGreeting name={user?.displayName} />
 
       <CategoryNav

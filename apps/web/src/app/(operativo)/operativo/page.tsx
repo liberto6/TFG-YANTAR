@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { useActiveOrders } from "@/features/operativo/hooks/use-active-orders";
 import { OrderKanbanCard } from "@/features/operativo/components/OrderKanbanCard";
 import { BranchSelectorBar } from "@/features/operativo/components/BranchSelectorBar";
+import { KitchenKPIs } from "@/features/operativo/components/KitchenKPIs";
 import { useSelectedBranch } from "@/features/operativo/hooks/use-selected-branch";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
@@ -70,14 +71,12 @@ export default function OperativoPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-h2 text-foreground">En curso</h2>
-          <span className="text-body-sm text-muted-foreground">
-            {totalActive} {totalActive === 1 ? "pedido activo" : "pedidos activos"}
-          </span>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <h2 className="text-h2 text-foreground">En curso</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <KitchenKPIs orders={orders ?? []} />
+          <BranchSelectorBar />
         </div>
-        <BranchSelectorBar />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

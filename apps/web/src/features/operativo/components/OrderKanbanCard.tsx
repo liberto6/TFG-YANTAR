@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bike,
   Clock,
@@ -25,10 +25,40 @@ interface OrderKanbanCardProps {
   order: Order;
 }
 
-function timeAgoBucket(minutes: number): { label: string; classes: string } {
-  if (minutes < 5) return { label: `hace ${minutes}m`, classes: "bg-success/10 text-success" };
-  if (minutes < 15) return { label: `hace ${minutes}m`, classes: "bg-warning/10 text-warning" };
-  return { label: `hace ${minutes}m`, classes: "bg-danger/10 text-danger" };
+type Urgency = "fresh" | "warming" | "late";
+
+function urgencyOf(minutes: number): Urgency {
+  if (minutes < 5) return "fresh";
+  if (minutes < 15) return "warming";
+  return "late";
+}
+
+const URGENCY_BORDER: Record<Urgency, string> = {
+  fresh: "border-l-success",
+  warming: "border-l-warning",
+  late: "border-l-danger",
+};
+
+const URGENCY_BADGE: Record<Urgency, string> = {
+  fresh: "bg-success/10 text-success",
+  warming: "bg-warning/10 text-warning",
+  late: "bg-danger/10 text-danger animate-pulse-soft",
+};
+
+/**
+ * Hook que devuelve los minutos transcurridos desde `createdAt` y se actualiza
+ * cada 30 s para que el contador de urgencia avance solo sin recargar.
+ */
+function useMinutesAgo(createdAt: string): number {
+  const compute = () =>
+    Math.max(0, Math.round((Date.now() - new Date(createdAt).getTime()) / 60000));
+  const [m, setM] = useState(compute);
+  useEffect(() => {
+    const id = setInterval(() => setM(compute()), 30_000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createdAt]);
+  return m;
 }
 
 export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
@@ -39,38 +69,50 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
   const [showReject, setShowReject] = useState(false);
   const [estimatedMinutes, setEstimatedMinutes] = useState(20);
 
-  const createdAt = new Date(order.createdAt);
-  const minutesAgo = Math.max(0, Math.round((Date.now() - createdAt.getTime()) / 60000));
-  const timeBadge = timeAgoBucket(minutesAgo);
+  const minutesAgo = useMinutesAgo(order.createdAt);
+  const urgency = urgencyOf(minutesAgo);
   const ModeIcon = order.deliveryMode === "DELIVERY" ? Bike : ShoppingBag;
 
   return (
-    <Card>
+    <Card
+      className={cn(
+        "relative overflow-hidden border-l-4 transition-shadow",
+        URGENCY_BORDER[urgency],
+        urgency === "late" && "shadow-md shadow-danger/20",
+      )}
+    >
       <CardContent className="space-y-3 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-body font-semibold text-foreground tabular-nums">
-              #{order.id.slice(-6).toUpperCase()}
+        {/* Top: ID en display + total en display, mode icon */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <p className="font-mono text-[1.5rem] font-bold leading-none tracking-tight text-foreground tabular-nums">
+              #{order.id.slice(-4).toUpperCase()}
             </p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-caption text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-1.5 text-caption text-muted-foreground">
               <span className="inline-flex items-center gap-1">
-                <ModeIcon size={11} />
+                <ModeIcon size={12} />
                 {order.deliveryMode === "DELIVERY" ? "Domicilio" : "Recogida"}
               </span>
-              <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium", timeBadge.classes)}>
-                <Clock size={11} /> {timeBadge.label}
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium tabular-nums",
+                  URGENCY_BADGE[urgency],
+                )}
+              >
+                <Clock size={11} /> {minutesAgo}m
               </span>
             </div>
           </div>
-          <span className="shrink-0 rounded-md bg-secondary px-2 py-0.5 text-body-sm font-semibold tabular-nums text-foreground">
-            {order.total.toFixed(2)} €
-          </span>
+          <p className="shrink-0 font-mono text-[1.25rem] font-semibold leading-none tabular-nums text-foreground">
+            {order.total.toFixed(2)}
+            <span className="ml-0.5 text-body-sm font-normal text-muted-foreground">€</span>
+          </p>
         </div>
 
         <ul className="space-y-1 border-y border-border py-2">
           {order.items.map((item) => (
-            <li key={item.id} className="text-caption">
-              <span className="font-medium text-foreground tabular-nums">
+            <li key={item.id} className="text-body-sm">
+              <span className="font-semibold text-foreground tabular-nums">
                 {item.quantity}×
               </span>{" "}
               <span className="text-foreground">{item.dishName}</span>
@@ -78,7 +120,7 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
                 <span className="text-muted-foreground"> · {item.selectedVariant}</span>
               )}
               {item.selectedModifiers.length > 0 && (
-                <p className="ml-4 text-muted-foreground">
+                <p className="ml-4 text-caption text-muted-foreground">
                   + {item.selectedModifiers.map((m) => m.name).join(", ")}
                 </p>
               )}
@@ -87,13 +129,15 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
         </ul>
 
         {order.scheduledTime && (
-          <div className="flex items-center gap-1.5 rounded-md bg-info/10 px-2 py-1 text-caption font-medium text-info">
-            <Clock size={12} />
+          <div className="flex items-center gap-1.5 rounded-md bg-info/10 px-2 py-1 text-body-sm font-semibold text-info">
+            <Clock size={13} />
             Para las{" "}
-            {new Date(order.scheduledTime).toLocaleTimeString("es-ES", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            <span className="font-mono tabular-nums">
+              {new Date(order.scheduledTime).toLocaleTimeString("es-ES", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           </div>
         )}
 
@@ -121,13 +165,12 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
                 min={5}
                 max={120}
                 step={5}
-                className="h-9 w-16"
+                className="h-10 w-16"
                 aria-label="Minutos estimados de preparación"
               />
               <span className="text-caption text-muted-foreground">min</span>
               <Button
-                size="sm"
-                className="ml-auto"
+                className="ml-auto h-10 px-4"
                 loading={acceptMutation.isPending}
                 onClick={() => acceptMutation.mutate({ orderId: order.id, estimatedMinutes })}
               >
@@ -184,8 +227,7 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
 
         {order.status === "ACCEPTED" && (
           <Button
-            size="sm"
-            className="w-full"
+            className="h-10 w-full"
             loading={advanceMutation.isPending}
             onClick={() => advanceMutation.mutate({ orderId: order.id, action: "preparing" })}
           >
@@ -195,8 +237,7 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
 
         {order.status === "PREPARING" && (
           <Button
-            size="sm"
-            className="w-full"
+            className="h-10 w-full"
             loading={advanceMutation.isPending}
             onClick={() => advanceMutation.mutate({ orderId: order.id, action: "ready" })}
           >
@@ -206,8 +247,7 @@ export function OrderKanbanCard({ order }: OrderKanbanCardProps) {
 
         {order.status === "READY" && (
           <Button
-            size="sm"
-            className="w-full"
+            className="h-10 w-full"
             loading={advanceMutation.isPending}
             onClick={() => advanceMutation.mutate({ orderId: order.id, action: "delivered" })}
           >

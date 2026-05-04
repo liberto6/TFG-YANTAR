@@ -45,11 +45,14 @@ export default function OperativoLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    // `dark` fuerza el modo oscuro de tokens en TODA la subárbol del operativo.
+    // Pensado para tablet en cocina/barra: alto contraste, ahorro de batería en
+    // pantallas OLED, mejor legibilidad bajo luces fuertes.
+    <div className="dark min-h-screen bg-background text-foreground">
       <a href="#main-content" className="skip-link">
         Saltar al contenido
       </a>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface px-4 sm:px-6">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur sm:px-6">
         <div className="flex items-center gap-2 min-w-0">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <ChefHat size={16} />

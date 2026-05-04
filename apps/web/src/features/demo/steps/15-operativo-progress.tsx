@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { DemoChapter } from "../components/DemoChapter";
-import { KanbanShell } from "./14-operativo-receive";
+import { DemoMockShell } from "../components/DemoMockShell";
+import { KanbanShellReal } from "./14-operativo-receive";
 
 /**
- * Paso 15 — El cocinero acepta el pedido y lo va avanzando por el kanban.
- * El componente cicla automáticamente entre los 3 estados para que la
- * transición sea visible mientras dura el paso.
+ * Paso 15 — El cocinero avanza el pedido. Cicla automáticamente entre los
+ * tres estados (aceptado → preparando → listo) cada 2.5 s para que se vea
+ * la transición visual del kanban.
  */
 export function Step15OperativoProgress() {
   const states = ["accepted", "preparing", "ready"] as const;
@@ -24,7 +25,9 @@ export function Step15OperativoProgress() {
 
   return (
     <DemoChapter url="napoli.yantar.app/operativo" device="tablet">
-      <KanbanShell highlight={current} />
+      <DemoMockShell>
+        <KanbanShellReal highlight={current} />
+      </DemoMockShell>
     </DemoChapter>
   );
 }

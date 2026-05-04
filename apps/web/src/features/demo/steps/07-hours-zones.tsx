@@ -1,23 +1,25 @@
 "use client";
 
-import { Clock, Map as MapIcon } from "lucide-react";
+import { Map as MapIcon } from "lucide-react";
+import { HoursEditor } from "@/features/admin-company/components/HoursEditor";
 import { DemoChapter } from "../components/DemoChapter";
+import { DemoMockShell } from "../components/DemoMockShell";
 import { AdminSidebar } from "./04-admin-empty";
+import { DEMO_BRANCH, NAPOLI_HOURS } from "../data/napoli-fixtures";
 
 /**
- * Paso 7 — Ana define horarios por día y dibuja la zona de reparto sobre un
- * mapa esquemático. El polígono es un SVG simulando el dibujo final con
- * leaflet-draw.
+ * Paso 7 — Ana define horarios y zona de reparto. El editor de horarios
+ * (`<HoursEditor />`) es el componente real de la app, montado contra un
+ * QueryClient seedeado con los horarios de demo. La zona de reparto se
+ * mantiene como mockup SVG porque Leaflet con polígonos editables requiere
+ * inicialización dinámica difícil de inyectar limpiamente.
  */
 export function Step07HoursZones() {
-  const days = [
-    { id: "L", label: "Lunes" },
-    { id: "M", label: "Martes" },
-    { id: "X", label: "Miércoles" },
-    { id: "J", label: "Jueves" },
-    { id: "V", label: "Viernes" },
-    { id: "S", label: "Sábado" },
-    { id: "D", label: "Domingo" },
+  const seed = [
+    {
+      key: ["operating-hours", DEMO_BRANCH.id] as const,
+      data: NAPOLI_HOURS,
+    },
   ];
 
   return (
@@ -25,26 +27,12 @@ export function Step07HoursZones() {
       <div className="flex">
         <AdminSidebar active="branches" />
         <div className="flex-1 grid gap-5 p-6 lg:grid-cols-2">
-          {/* Horarios */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-primary" />
-              <h2 className="text-h3 text-foreground">Horarios</h2>
-            </div>
-            <ul className="space-y-1.5">
-              {days.map((d) => (
-                <li
-                  key={d.id}
-                  className="flex items-center justify-between rounded-md border border-border bg-surface px-3 py-1.5 text-body-sm"
-                >
-                  <span className="font-medium text-foreground">{d.label}</span>
-                  <span className="font-mono text-muted-foreground">12:00 — 23:00</span>
-                </li>
-              ))}
-            </ul>
+          <div>
+            <DemoMockShell seed={seed}>
+              <HoursEditor branchId={DEMO_BRANCH.id} />
+            </DemoMockShell>
           </div>
 
-          {/* Mapa con polígono */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <MapIcon size={14} className="text-primary" />
@@ -75,42 +63,30 @@ function ZoneInfo({ label, value }: { label: string; value: string }) {
 function FakeLeafletMap() {
   return (
     <div className="relative h-48 overflow-hidden rounded-lg border border-border bg-[#dbeafe]">
-      {/* Calles simuladas */}
-      <svg
-        viewBox="0 0 320 200"
-        className="absolute inset-0 h-full w-full"
-        aria-hidden
-      >
+      <svg viewBox="0 0 320 200" className="absolute inset-0 h-full w-full" aria-hidden>
         <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#cbd5e1" strokeWidth="0.5" />
           </pattern>
         </defs>
         <rect width="320" height="200" fill="url(#grid)" />
-        {/* Calles principales */}
         <line x1="0" y1="100" x2="320" y2="100" stroke="#94a3b8" strokeWidth="3" />
         <line x1="160" y1="0" x2="160" y2="200" stroke="#94a3b8" strokeWidth="3" />
         <line x1="0" y1="50" x2="320" y2="50" stroke="#cbd5e1" strokeWidth="2" />
         <line x1="0" y1="150" x2="320" y2="150" stroke="#cbd5e1" strokeWidth="2" />
         <line x1="80" y1="0" x2="80" y2="200" stroke="#cbd5e1" strokeWidth="2" />
         <line x1="240" y1="0" x2="240" y2="200" stroke="#cbd5e1" strokeWidth="2" />
-
-        {/* Polígono de zona */}
         <polygon
           points="80,50 240,50 270,120 200,170 100,170 50,110"
           fill="rgba(14,165,233,0.18)"
           stroke="#0ea5e9"
           strokeWidth="2"
-          strokeDasharray="0"
         />
-
-        {/* Pin del local */}
         <g transform="translate(160 100)">
           <circle r="8" fill="#c0392b" />
           <circle r="3" fill="#fff" />
         </g>
       </svg>
-
       <span className="absolute bottom-1.5 left-1.5 rounded bg-background/80 px-1.5 py-0.5 text-[10px] text-muted-foreground">
         Leaflet · OpenStreetMap
       </span>
