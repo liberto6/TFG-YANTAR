@@ -62,6 +62,87 @@ describe('UpdateOrderStatusService', () => {
   })
 })
 
+describe('UpdateOrderStatusService — acumulación automática de puntos', () => {
+  const mockLoyaltyChecker = {
+    getAvailablePoints: jest.fn(),
+    redeemPoints: jest.fn(),
+    awardPoints: jest.fn(),
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('al marcar como DELIVERED, llama a awardPoints con customerId, companyId, total y orderId', async () => {
+    const service = new UpdateOrderStatusService(
+      mockOrderRepository,
+      mockNotificationService,
+      mockLoyaltyChecker,
+    )
+    const order = Order.create(baseProps).accept(20).startPreparing().markReady()
+    mockOrderRepository.getById.mockResolvedValue(order)
+    mockOrderRepository.save.mockImplementation(async (o: Order) => o)
+    mockLoyaltyChecker.awardPoints.mockResolvedValue(10)
+
+    await service.execute('co-1', 'o-1', 'markDelivered')
+
+    expect(mockLoyaltyChecker.awardPoints).toHaveBeenCalledWith(
+      'u-1',  // customerId
+      'co-1', // companyId
+      10,     // total
+      'o-1',  // orderId
+    )
+  })
+
+  it('NO llama a awardPoints en transiciones distintas de markDelivered', async () => {
+    const service = new UpdateOrderStatusService(
+      mockOrderRepository,
+      mockNotificationService,
+      mockLoyaltyChecker,
+    )
+    const order = Order.create(baseProps).accept(20)
+    mockOrderRepository.getById.mockResolvedValue(order)
+    mockOrderRepository.save.mockImplementation(async (o: Order) => o)
+
+    await service.execute('co-1', 'o-1', 'startPreparing')
+
+    expect(mockLoyaltyChecker.awardPoints).not.toHaveBeenCalled()
+  })
+
+  it('completa el cambio de estado aunque awardPoints lance una excepción', async () => {
+    const service = new UpdateOrderStatusService(
+      mockOrderRepository,
+      mockNotificationService,
+      mockLoyaltyChecker,
+    )
+    const order = Order.create(baseProps).accept(20).startPreparing().markReady()
+    mockOrderRepository.getById.mockResolvedValue(order)
+    mockOrderRepository.save.mockImplementation(async (o: Order) => o)
+    mockLoyaltyChecker.awardPoints.mockRejectedValue(new Error('loyalty system down'))
+
+    const result = await service.execute('co-1', 'o-1', 'markDelivered')
+
+    expect(result.status).toBe(OrderStatus.DELIVERED)
+    expect(mockLoyaltyChecker.awardPoints).toHaveBeenCalled()
+  })
+
+  it('completa el cambio de estado a DELIVERED sin loyaltyChecker (null)', async () => {
+    const service = new UpdateOrderStatusService(
+      mockOrderRepository,
+      mockNotificationService,
+      null,
+    )
+    const order = Order.create(baseProps).accept(20).startPreparing().markReady()
+    mockOrderRepository.getById.mockResolvedValue(order)
+    mockOrderRepository.save.mockImplementation(async (o: Order) => o)
+
+    const result = await service.execute('co-1', 'o-1', 'markDelivered')
+
+    expect(result.status).toBe(OrderStatus.DELIVERED)
+    expect(mockLoyaltyChecker.awardPoints).not.toHaveBeenCalled()
+  })
+})
+
 describe('CancelOrderService', () => {
   let service: CancelOrderService
 

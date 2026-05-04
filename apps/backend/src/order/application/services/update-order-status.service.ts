@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from '@nestjs/common'
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common'
 import { IOrderRepository } from '../../domain/ports/order-repository.port'
 import { INotificationService } from '../../domain/ports/notification-service.port'
 import { ILoyaltyChecker } from '../../domain/ports/loyalty-checker.port'
@@ -10,6 +10,8 @@ export type OrderStatusAction = 'startPreparing' | 'markReady' | 'markDelivered'
 
 @Injectable()
 export class UpdateOrderStatusService {
+  private readonly logger = new Logger(UpdateOrderStatusService.name)
+
   constructor(
     @Inject('IOrderRepository')
     private readonly orderRepository: IOrderRepository,
@@ -37,7 +39,9 @@ export class UpdateOrderStatusService {
     const saved = await this.orderRepository.save(updated)
     await this.notificationService.notifyOrderStatusChange(saved)
 
-    // Award loyalty points when order is delivered
+    // Acumulación automática de puntos al marcar el pedido como entregado.
+    // Los errores del subsistema de fidelización se registran pero no
+    // hacen fallar el cambio de estado del pedido.
     if (action === 'markDelivered' && this.loyaltyChecker) {
       try {
         await this.loyaltyChecker.awardPoints(
@@ -46,8 +50,12 @@ export class UpdateOrderStatusService {
           saved.total,
           saved.id,
         )
-      } catch {
-        // Loyalty errors are non-critical — do not fail the status update
+      } catch (error) {
+        this.logger.warn(
+          `No se pudieron acumular puntos para el pedido ${saved.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
       }
     }
 
