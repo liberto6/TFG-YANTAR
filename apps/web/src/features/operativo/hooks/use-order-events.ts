@@ -25,14 +25,14 @@ export function useBranchOrderEvents(branchId: string | undefined) {
       socket.emit("branch:subscribe", { branchId });
     });
 
-    socket.on("order:new", (order: Order) => {
+    socket.on("order:created", (order: Order) => {
       queryClient.setQueryData<Order[]>(["active-orders", branchId], (prev = []) => {
         const exists = prev.some((o) => o.id === order.id);
         return exists ? prev : [order, ...prev];
       });
     });
 
-    socket.on("order:status-changed", (order: Order) => {
+    socket.on("order:updated", (order: Order) => {
       // Actualiza el pedido individual
       queryClient.setQueryData(["order", order.id], order);
       // Actualiza la lista de activos
@@ -65,7 +65,7 @@ export function useOrderSocketSubscription(orderId: string | undefined) {
       socket.emit("order:subscribe", { orderId });
     });
 
-    socket.on("order:status-changed", (order: Order) => {
+    socket.on("order:updated", (order: Order) => {
       queryClient.setQueryData(["order", orderId], order);
     });
 

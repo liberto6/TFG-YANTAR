@@ -17,6 +17,10 @@ export interface SelectedBranch {
   deliveryZoneId?: string;
   /** Customer's delivery address (only set when deliveryMode === "DELIVERY") */
   customerAddress?: string;
+  /** Modos ofrecidos por la sucursal (para permitir cambiar pickup/delivery sin volver a la landing). */
+  serviceModes?: ("PICKUP" | "DELIVERY")[];
+  /** Importe mínimo de la zona de reparto activa (sólo aplica a DELIVERY). */
+  minOrderAmount?: number;
 }
 
 interface BranchContextValue {

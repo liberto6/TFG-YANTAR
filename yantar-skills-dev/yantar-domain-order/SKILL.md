@@ -126,8 +126,8 @@ confirmPayment(paymentId: string): Promise<boolean>
 ## WebSocket Events
 
 ### Desde el servidor
-- `order:new` → vista operativa recibe pedido nuevo
-- `order:status-changed` → customer recibe cambio de estado
+- `order:created` → vista operativa recibe pedido nuevo
+- `order:updated` → customer recibe cambio de estado
 - `order:cancelled` → ambas partes
 
 ### Desde el cliente

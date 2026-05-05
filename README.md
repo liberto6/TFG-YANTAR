@@ -215,7 +215,7 @@ PENDING/ACCEPTED → CANCELLED
 **Backend — WebSocket** (`apps/backend/src/order/infrastructure/gateways/`)
 - `OrderEventsGateway` — gateway Socket.io en namespace `/orders`
 - Rooms por `branch:{branchId}` (vista operativa) y `order:{orderId}` (customer tracking)
-- Eventos emitidos: `order:new`, `order:status-changed`
+- Eventos emitidos: `order:created`, `order:updated`
 - Suscripciones cliente: `branch:subscribe`, `order:subscribe`
 - `WsNotificationAdapter` — implementa `INotificationService`, sustituye `NullNotificationAdapter`
 

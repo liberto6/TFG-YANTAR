@@ -12,6 +12,8 @@ import { SuccessCheckmark } from "@/components/ui/success-checkmark";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/features/cart/hooks/use-cart";
 import { useBranch } from "@/features/branch/context/branch-context";
+import { AddressZoneSelector } from "@/features/branch/components/AddressZoneSelector";
+import type { DeliveryCheckResult } from "@/features/branch/hooks/use-check-delivery";
 import { api } from "@/lib/api-client";
 import type { Order } from "@/features/orders/types/order.types";
 import { RedeemAtCheckout } from "@/features/loyalty/components/RedeemAtCheckout";
@@ -19,11 +21,47 @@ import type { LoyaltyReward } from "@/features/loyalty/hooks/use-loyalty";
 import { TimeSlotSelector } from "@/features/checkout/components/TimeSlotSelector";
 
 type PaymentMethod = "CASH" | "CARD";
+type DeliveryMode = "PICKUP" | "DELIVERY";
+
+interface ConfirmedDelivery {
+  address: string;
+  fee: number;
+  zoneId?: string;
+  minOrderAmount: number;
+}
 
 export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
-  const { branch: selectedBranch } = useBranch();
+  const { branch: selectedBranch, selectBranch } = useBranch();
   const router = useRouter();
+
+  const branchId = selectedBranch?.id;
+
+  // Modos disponibles. Si la sucursal no expone serviceModes (legacy
+  // localStorage), nos limitamos al modo con el que llegó.
+  const availableModes: DeliveryMode[] =
+    selectedBranch?.serviceModes && selectedBranch.serviceModes.length > 0
+      ? selectedBranch.serviceModes
+      : selectedBranch?.deliveryMode
+        ? [selectedBranch.deliveryMode]
+        : [];
+
+  const [mode, setMode] = useState<DeliveryMode>(
+    selectedBranch?.deliveryMode ?? "PICKUP",
+  );
+  const [delivery, setDelivery] = useState<ConfirmedDelivery | null>(
+    selectedBranch?.deliveryMode === "DELIVERY" && selectedBranch.customerAddress
+      ? {
+          address: selectedBranch.customerAddress,
+          fee: selectedBranch.deliveryFee ?? 0,
+          zoneId: selectedBranch.deliveryZoneId,
+          minOrderAmount: selectedBranch.minOrderAmount ?? 0,
+        }
+      : null,
+  );
+  const [isEditingAddress, setIsEditingAddress] = useState(
+    mode === "DELIVERY" && !selectedBranch?.customerAddress,
+  );
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [scheduledTime, setScheduledTime] = useState<string | null>(null);
@@ -33,11 +71,12 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ orderId: string } | null>(null);
 
-  const branchId = selectedBranch?.id;
-  const deliveryMode = selectedBranch?.deliveryMode ?? "PICKUP";
-  const deliveryAddress =
-    deliveryMode === "DELIVERY" ? (selectedBranch?.customerAddress ?? "") : "";
-  const deliveryFee = deliveryMode === "DELIVERY" ? (selectedBranch?.deliveryFee ?? 0) : 0;
+  const deliveryFee = mode === "DELIVERY" ? (delivery?.fee ?? 0) : 0;
+  const minOrderAmount =
+    mode === "DELIVERY" ? (delivery?.minOrderAmount ?? 0) : 0;
+  const minOrderShortfall = Math.max(0, minOrderAmount - subtotal);
+  const isBelowMinimum =
+    mode === "DELIVERY" && delivery !== null && minOrderShortfall > 0;
 
   const rewardDiscount =
     selectedReward?.type === "DISCOUNT_FIXED"
@@ -59,7 +98,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!branchId) {
+  if (!branchId || !selectedBranch) {
     return (
       <div className="space-y-4 py-12 text-center">
         <p className="text-body-sm text-muted-foreground">
@@ -72,15 +111,77 @@ export default function CheckoutPage() {
     );
   }
 
+  const requiresAddress = mode === "DELIVERY";
+  const hasConfirmedAddress = delivery !== null && !isEditingAddress;
+  const canConfirm =
+    !isLoading &&
+    (!requiresAddress || hasConfirmedAddress) &&
+    !isBelowMinimum;
+
+  function handleModeChange(next: DeliveryMode) {
+    if (next === mode || !selectedBranch) return;
+    setMode(next);
+    setError(null);
+
+    if (next === "PICKUP") {
+      setIsEditingAddress(false);
+      selectBranch({
+        ...selectedBranch,
+        deliveryMode: "PICKUP",
+        deliveryFee: 0,
+      });
+    } else {
+      // DELIVERY: si tenemos una zona ya confirmada de antes la reutilizamos;
+      // si no, abrimos el editor de dirección.
+      if (delivery) {
+        setIsEditingAddress(false);
+        selectBranch({
+          ...selectedBranch,
+          deliveryMode: "DELIVERY",
+          deliveryFee: delivery.fee,
+          customerAddress: delivery.address,
+          deliveryZoneId: delivery.zoneId,
+          minOrderAmount: delivery.minOrderAmount,
+        });
+      } else {
+        setIsEditingAddress(true);
+      }
+    }
+  }
+
+  function handleAddressConfirmed(
+    result: DeliveryCheckResult,
+    address: string,
+  ) {
+    if (!selectedBranch) return;
+    const next: ConfirmedDelivery = {
+      address,
+      fee: result.deliveryFee,
+      zoneId: result.zoneId,
+      minOrderAmount: result.minOrderAmount,
+    };
+    setDelivery(next);
+    setIsEditingAddress(false);
+    selectBranch({
+      ...selectedBranch,
+      deliveryMode: "DELIVERY",
+      deliveryFee: next.fee,
+      customerAddress: next.address,
+      deliveryZoneId: next.zoneId,
+      minOrderAmount: next.minOrderAmount,
+    });
+  }
+
   async function handleConfirm() {
+    if (!canConfirm) return;
     setError(null);
     setIsLoading(true);
     try {
       const order = await api.post<Order>("/orders", {
         branchId,
-        deliveryMode,
-        deliveryAddress: deliveryMode === "DELIVERY" ? deliveryAddress : undefined,
-        deliveryFee: deliveryMode === "DELIVERY" ? deliveryFee : 0,
+        deliveryMode: mode,
+        deliveryAddress: mode === "DELIVERY" ? delivery?.address : undefined,
+        deliveryFee: mode === "DELIVERY" ? (delivery?.fee ?? 0) : 0,
         paymentMethod,
         scheduledTime: scheduledTime ?? undefined,
         notes: notes.trim() || undefined,
@@ -95,7 +196,6 @@ export default function CheckoutPage() {
       });
       clear();
       setSuccess({ orderId: order.id });
-      // Mantener el overlay 1.4s antes de redirigir
       setTimeout(() => router.push(`/orders/${order.id}`), 1400);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear el pedido");
@@ -118,39 +218,134 @@ export default function CheckoutPage() {
     );
   }
 
-  const ModeIcon = deliveryMode === "PICKUP" ? ShoppingBag : Bike;
+  const showModeSelector = availableModes.length > 1;
 
   return (
     <div className="space-y-5 pb-6">
       <h1 className="text-h1 text-foreground">Confirmar pedido</h1>
 
-      {selectedBranch && (
-        <Card>
-          <CardContent className="flex items-start justify-between gap-3 pt-4">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ModeIcon size={18} />
-              </span>
-              <div className="space-y-0.5">
-                <p className="text-body font-medium text-foreground">{selectedBranch.name}</p>
-                <p className="text-body-sm text-muted-foreground">
-                  {deliveryMode === "PICKUP" ? "Recogida en el local" : "Envío a domicilio"}
-                </p>
-                {deliveryMode === "DELIVERY" && deliveryAddress && (
-                  <p className="text-caption text-muted-foreground">{deliveryAddress}</p>
-                )}
-              </div>
+      <Card>
+        <CardContent className="flex items-start justify-between gap-3 pt-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <ShoppingBag size={18} />
+            </span>
+            <div className="space-y-0.5">
+              <p className="text-body font-medium text-foreground">
+                {selectedBranch.name}
+              </p>
+              <p className="text-body-sm text-muted-foreground">
+                {selectedBranch.address}
+              </p>
             </div>
-            <button
-              onClick={() => router.push("/")}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-caption text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label="Cambiar local o modo de entrega"
+          </div>
+          <button
+            onClick={() => router.push("/")}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-caption text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Cambiar local"
+          >
+            <Pencil size={12} /> Cambiar local
+          </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="text-h3 text-foreground">Modo de entrega</h2>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {showModeSelector ? (
+            <RadioGroup
+              name="delivery-mode"
+              value={mode}
+              onValueChange={(v) => handleModeChange(v as DeliveryMode)}
+              className="grid gap-2 sm:grid-cols-2"
             >
-              <Pencil size={12} /> Cambiar
-            </button>
-          </CardContent>
-        </Card>
-      )}
+              {availableModes.includes("PICKUP") && (
+                <RadioGroupItem
+                  value="PICKUP"
+                  label={
+                    <span className="flex items-center gap-2">
+                      <ShoppingBag size={16} className="text-primary" />
+                      Recoger en local
+                    </span>
+                  }
+                  description="Sin gastos de envío"
+                />
+              )}
+              {availableModes.includes("DELIVERY") && (
+                <RadioGroupItem
+                  value="DELIVERY"
+                  label={
+                    <span className="flex items-center gap-2">
+                      <Bike size={16} className="text-accent" />
+                      Envío a domicilio
+                    </span>
+                  }
+                  description="Te lo llevamos"
+                />
+              )}
+            </RadioGroup>
+          ) : (
+            <p className="text-body-sm text-muted-foreground">
+              {mode === "PICKUP"
+                ? "Recoges tu pedido en el local."
+                : "Te lo llevamos a tu dirección."}
+            </p>
+          )}
+
+          {mode === "DELIVERY" && (
+            <div className="space-y-3 border-t border-border pt-3">
+              {hasConfirmedAddress && delivery ? (
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <p className="text-body-sm font-medium text-foreground">
+                        {delivery.address}
+                      </p>
+                      <p className="text-caption text-muted-foreground">
+                        Envío {delivery.fee.toFixed(2)} €
+                        {delivery.minOrderAmount > 0 && (
+                          <>
+                            {" · "}Pedido mínimo {delivery.minOrderAmount.toFixed(2)} €
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setIsEditingAddress(true)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-caption text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      aria-label="Cambiar dirección"
+                    >
+                      <Pencil size={12} /> Cambiar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <AddressZoneSelector
+                  branchId={branchId}
+                  initialAddress={delivery?.address ?? selectedBranch.customerAddress ?? ""}
+                  onConfirmed={handleAddressConfirmed}
+                  label="Dirección de envío"
+                  inputId="checkout-address-input"
+                  confirmLabel="Verificar zona"
+                  outOfZoneFallback={
+                    availableModes.includes("PICKUP") ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleModeChange("PICKUP")}
+                      >
+                        Cambiar a recogida en local
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
@@ -256,7 +451,7 @@ export default function CheckoutPage() {
               <span className="text-muted-foreground">Subtotal</span>
               <span className="tabular-nums">{subtotal.toFixed(2)} €</span>
             </div>
-            {deliveryMode === "DELIVERY" && (
+            {mode === "DELIVERY" && hasConfirmedAddress && (
               <div className="flex justify-between text-body-sm">
                 <span className="text-muted-foreground">Envío</span>
                 <span className="tabular-nums">{deliveryFee.toFixed(2)} €</span>
@@ -287,13 +482,26 @@ export default function CheckoutPage() {
         </CardContent>
       </Card>
 
+      {isBelowMinimum && (
+        <Alert variant="warning" heading="Subtotal insuficiente">
+          El pedido mínimo de tu zona es {minOrderAmount.toFixed(2)} €. Te
+          faltan {minOrderShortfall.toFixed(2)} € para poder confirmar.
+        </Alert>
+      )}
+
+      {requiresAddress && !hasConfirmedAddress && !isEditingAddress && (
+        <Alert variant="warning">
+          Confirma una dirección de envío para continuar.
+        </Alert>
+      )}
+
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Button
         className="w-full"
         size="lg"
         loading={isLoading}
-        disabled={isLoading || (deliveryMode === "DELIVERY" && !deliveryAddress.trim())}
+        disabled={!canConfirm}
         onClick={handleConfirm}
       >
         {isLoading

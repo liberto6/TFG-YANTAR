@@ -44,11 +44,11 @@ export class OrderEventsGateway implements OnGatewayConnection, OnGatewayDisconn
   }
 
   emitNewOrder(branchId: string, orderData: object) {
-    this.server.to(`branch:${branchId}`).emit('order:new', orderData)
+    this.server.to(`branch:${branchId}`).emit('order:created', orderData)
   }
 
   emitStatusChanged(orderId: string, branchId: string, orderData: object) {
-    this.server.to(`order:${orderId}`).emit('order:status-changed', orderData)
-    this.server.to(`branch:${branchId}`).emit('order:status-changed', orderData)
+    this.server.to(`order:${orderId}`).emit('order:updated', orderData)
+    this.server.to(`branch:${branchId}`).emit('order:updated', orderData)
   }
 }
